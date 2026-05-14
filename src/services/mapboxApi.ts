@@ -36,16 +36,20 @@ function offsetCoordinate(origin: Coordinate, bearing: number, distanceKm: numbe
   };
 }
 
-// Generates two random waypoints around the origin to form a loop route.
-// radius = targetKm / (2π) approximates the radius of a circle with the target circumference.
+// Places 3 waypoints at ~120° intervals around the origin to form a triangular loop.
+// Dividing by 1.2 compensates for road detours making actual distance longer than straight lines.
 function generateWaypoints(origin: Coordinate, targetKm: number): Coordinate[] {
-  const radius = targetKm / (2 * Math.PI);
+  const radius = targetKm / (2 * Math.PI * 1.2);
   const baseBearing = Math.random() * 360;
 
-  const wp1 = offsetCoordinate(origin, baseBearing, radius * 1.2);
-  const wp2 = offsetCoordinate(origin, baseBearing + 120 + Math.random() * 60, radius * 1.0);
+  const bearingJitter = () => (Math.random() - 0.5) * 50;
+  const distFactor = () => 0.8 + Math.random() * 0.4;
 
-  return [wp1, wp2];
+  return [
+    offsetCoordinate(origin, baseBearing + bearingJitter(), radius * distFactor()),
+    offsetCoordinate(origin, baseBearing + 120 + bearingJitter(), radius * distFactor()),
+    offsetCoordinate(origin, baseBearing + 240 + bearingJitter(), radius * distFactor()),
+  ];
 }
 
 // Calculates the bounding box (NE + SW corners) that contains all route coordinates.
