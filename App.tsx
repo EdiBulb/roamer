@@ -1,31 +1,93 @@
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation } from './src/hooks/useLocation';
 import { useRoute } from './src/hooks/useRoute';
 import { MapDisplay } from './src/components/MapDisplay';
 import { DistancePicker } from './src/components/DistancePicker';
 import { RouteInfo } from './src/components/RouteInfo';
 import { SplashScreen } from './src/components/SplashScreen';
-import { TargetDistance } from './src/types';
+import { RunningScreen } from './src/components/RunningScreen';
+import { DEMO_MODE } from './src/constants';
+import { Coordinate, TargetDistance } from './src/types';
+
+function segmentKm(a: Coordinate, b: Coordinate): number {
+  const R = 6371;
+  const dLat = ((b.latitude - a.latitude) * Math.PI) / 180;
+  const dLon = ((b.longitude - a.longitude) * Math.PI) / 180;
+  const lat1 = (a.latitude * Math.PI) / 180;
+  const lat2 = (b.latitude * Math.PI) / 180;
+  const x = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.asin(Math.sqrt(x));
+}
 
 export default function App() {
+  return <AppContent />;
+}
+
+function AppContent() {
   const { location, loading: locationLoading, error: locationError } = useLocation();
   const [selectedDistance, setSelectedDistance] = useState<TargetDistance>(5);
   const { route, status, generate } = useRoute(location, selectedDistance);
   const [showSplash, setShowSplash] = useState(true);
+  const [isRunning, setIsRunning] = useState(false);
+  const [coveredKm, setCoveredKm] = useState(0);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [simulatedLocation, setSimulatedLocation] = useState<Coordinate | null>(null);
 
   const isGenerating = status === 'loading';
+
+  // Elapsed time counter
+  useEffect(() => {
+    if (!isRunning) return;
+    const timer = setInterval(() => setElapsedSeconds((s) => s + 1), 1000);
+    return () => clearInterval(timer);
+  }, [isRunning]);
+
+  // Demo mode: simulate position moving along route coordinates
+  useEffect(() => {
+    if (!isRunning || !DEMO_MODE || !route) return;
+    const coords = route.coordinates;
+    let index = 0;
+
+    const interval = setInterval(() => {
+      if (index >= coords.length - 1) return;
+      const next = Math.min(index + 3, coords.length - 1);
+      let added = 0;
+      for (let i = index; i < next; i++) {
+        added += segmentKm(coords[i], coords[i + 1]);
+      }
+      setSimulatedLocation(coords[next]);
+      index = next;
+      setCoveredKm((d) => d + added);
+    }, 300);
+
+    return () => clearInterval(interval);
+  }, [isRunning, route]);
+
+  function handleStartRun() {
+    setCoveredKm(0);
+    setElapsedSeconds(0);
+    setSimulatedLocation(location);
+    setIsRunning(true);
+  }
+
+  function handleStopRun() {
+    setIsRunning(false);
+    setSimulatedLocation(null);
+  }
 
   if (showSplash) {
     return <SplashScreen onFinish={() => setShowSplash(false)} />;
   }
 
+  const displayLocation = simulatedLocation ?? location;
+
   return (
     <View style={styles.container}>
       <StatusBar style="dark" />
 
-      {/* 지도 영역 */}
+      {/* Map area — always mounted so camera never resets on Start Run */}
       <View style={styles.mapArea}>
         {locationLoading && (
           <View style={styles.centered}>
@@ -38,42 +100,66 @@ export default function App() {
             <Text style={styles.errorText}>{locationError}</Text>
           </View>
         )}
-        {location && <MapDisplay location={location} route={route} />}
+        {displayLocation && <MapDisplay location={displayLocation} route={route} />}
       </View>
 
-      {/* 하단 카드 */}
-      <View style={styles.card}>
-        <Text style={styles.appTitle}>Random Run</Text>
-
-        <DistancePicker
-          selected={selectedDistance}
-          onSelect={(d) => {
-            setSelectedDistance(d);
-          }}
+      {/* Running stats card */}
+      {isRunning ? (
+        <RunningScreen
+          coveredKm={coveredKm}
+          elapsedSeconds={elapsedSeconds}
+          onStop={handleStopRun}
         />
+      ) : (
+        /* Main card */
+        <View style={styles.card}>
+          <Text style={styles.appTitle}>Random Run</Text>
 
-        <RouteInfo
-          status={status}
-          distanceKm={route?.distanceKm ?? null}
-          targetKm={selectedDistance}
-        />
+          <DistancePicker
+            selected={selectedDistance}
+            onSelect={(d) => setSelectedDistance(d)}
+          />
 
-        {/* 루트 생성 / 재생성 버튼 */}
-        <TouchableOpacity
-          style={[styles.generateButton, isGenerating && styles.generateButtonDisabled]}
-          onPress={generate}
-          disabled={isGenerating || !location}
-          activeOpacity={0.8}
-        >
-          {isGenerating ? (
-            <ActivityIndicator color="#fff" size="small" />
+          <RouteInfo
+            status={status}
+            distanceKm={route?.distanceKm ?? null}
+            targetKm={selectedDistance}
+          />
+
+          {status === 'success' ? (
+            <>
+              {/* Primary CTA */}
+              <TouchableOpacity
+                style={styles.startRunButton}
+                onPress={handleStartRun}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.startRunButtonText}>▶  Start Run</Text>
+              </TouchableOpacity>
+
+              {/* Secondary action — text link, not a competing button */}
+              <TouchableOpacity onPress={generate} disabled={isGenerating} activeOpacity={0.6}>
+                <Text style={styles.regenerateLink}>
+                  {isGenerating ? 'Generating...' : '↺  Regenerate Route'}
+                </Text>
+              </TouchableOpacity>
+            </>
           ) : (
-            <Text style={styles.generateButtonText}>
-              {status === 'success' ? 'Regenerate Route' : 'Generate Route'}
-            </Text>
+            <TouchableOpacity
+              style={[styles.generateButton, isGenerating && styles.generateButtonDisabled]}
+              onPress={generate}
+              disabled={isGenerating || !location}
+              activeOpacity={0.8}
+            >
+              {isGenerating ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <Text style={styles.generateButtonText}>Generate Route</Text>
+              )}
+            </TouchableOpacity>
           )}
-        </TouchableOpacity>
-      </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -107,7 +193,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingTop: 20,
-    paddingBottom: 36,
+    paddingBottom: 60,
     paddingHorizontal: 24,
     gap: 16,
     shadowColor: '#000',
@@ -121,6 +207,26 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: 'bold',
     color: '#1A1A1A',
+  },
+  startRunButton: {
+    backgroundColor: '#4CAF50',
+    paddingVertical: 16,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    minHeight: 54,
+  },
+  startRunButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  regenerateLink: {
+    fontSize: 14,
+    color: '#888',
+    textDecorationLine: 'underline',
   },
   generateButton: {
     backgroundColor: '#4CAF50',
