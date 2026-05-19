@@ -1,6 +1,6 @@
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLocation } from './src/hooks/useLocation';
 import { useRoute } from './src/hooks/useRoute';
 import { MapDisplay } from './src/components/MapDisplay';
@@ -41,6 +41,8 @@ function AppContent() {
   const { route, status, generate } = useRoute(location, selectedDistance);
   const [showSplash, setShowSplash] = useState(true);
   const [isRunning, setIsRunning] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const isPausedRef = useRef(false);
   const [coveredKm, setCoveredKm] = useState(0);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [simulatedLocation, setSimulatedLocation] = useState<Coordinate | null>(null);
@@ -49,12 +51,17 @@ function AppContent() {
 
   const isGenerating = status === 'loading';
 
-  // Elapsed time counter
+  // Keep ref in sync so simulation interval can read it without stale closure
   useEffect(() => {
-    if (!isRunning) return;
+    isPausedRef.current = isPaused;
+  }, [isPaused]);
+
+  // Elapsed time counter — stops when paused
+  useEffect(() => {
+    if (!isRunning || isPaused) return;
     const timer = setInterval(() => setElapsedSeconds((s) => s + 1), 1000);
     return () => clearInterval(timer);
-  }, [isRunning]);
+  }, [isRunning, isPaused]);
 
   // Demo mode: simulate position moving along route coordinates with voice navigation
   useEffect(() => {
@@ -79,6 +86,8 @@ function AppContent() {
     Speech.speak('Starting your run. Good luck!', { language: 'en' });
 
     const interval = setInterval(() => {
+      if (isPausedRef.current) return;
+
       localCoveredM = Math.min(localCoveredM + SPEED_M_PER_TICK, totalM);
 
       // Find the coordinate index that matches current distance
@@ -120,11 +129,22 @@ function AppContent() {
     setElapsedSeconds(0);
     setCurrentInstruction(null);
     setSimulatedLocation(location);
+    setIsPaused(false);
     setIsRunning(true);
   }
 
-  function handleStopRun() {
+  function handlePause() {
+    Speech.stop();
+    setIsPaused(true);
+  }
+
+  function handleResume() {
+    setIsPaused(false);
+  }
+
+  function handleFinishRun() {
     setIsRunning(false);
+    setIsPaused(false);
     setSimulatedLocation(null);
   }
 
@@ -160,7 +180,10 @@ function AppContent() {
           coveredKm={coveredKm}
           elapsedSeconds={elapsedSeconds}
           instruction={currentInstruction}
-          onStop={handleStopRun}
+          isPaused={isPaused}
+          onPause={handlePause}
+          onResume={handleResume}
+          onFinish={handleFinishRun}
         />
       ) : (
         /* Main card */

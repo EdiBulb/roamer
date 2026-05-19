@@ -1,10 +1,14 @@
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SlideToResume } from './SlideToResume';
 
 interface Props {
   coveredKm: number;
   elapsedSeconds: number;
   instruction: string | null;
-  onStop: () => void;
+  isPaused: boolean;
+  onPause: () => void;
+  onResume: () => void;
+  onFinish: () => void;
 }
 
 function formatTime(seconds: number): string {
@@ -21,14 +25,30 @@ function formatPace(distKm: number, seconds: number): string {
   return `${m}:${s}`;
 }
 
-export function RunningScreen({ coveredKm, elapsedSeconds, instruction, onStop }: Props) {
+function handleFinishPress(onFinish: () => void) {
+  Alert.alert(
+    'Finish Run?',
+    'Are you sure you want to end this run?',
+    [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Finish', style: 'destructive', onPress: onFinish },
+    ]
+  );
+}
+
+export function RunningScreen({ coveredKm, elapsedSeconds, instruction, isPaused, onPause, onResume, onFinish }: Props) {
   return (
     <View style={styles.card}>
-      {instruction && (
+      {isPaused ? (
+        <View style={styles.pausedBanner}>
+          <Text style={styles.pausedText}>⏸  Paused</Text>
+        </View>
+      ) : instruction ? (
         <View style={styles.instructionBanner}>
           <Text style={styles.instructionText}>{instruction}</Text>
         </View>
-      )}
+      ) : null}
+
       <View style={styles.statsRow}>
         <View style={styles.stat}>
           <Text style={styles.statValue}>{coveredKm.toFixed(2)}</Text>
@@ -45,9 +65,19 @@ export function RunningScreen({ coveredKm, elapsedSeconds, instruction, onStop }
           <Text style={styles.statLabel}>min/km</Text>
         </View>
       </View>
-      <TouchableOpacity style={styles.stopButton} onPress={onStop} activeOpacity={0.8}>
-        <Text style={styles.stopButtonText}>Stop Run</Text>
-      </TouchableOpacity>
+
+      {isPaused ? (
+        <View style={styles.pausedActions}>
+          <SlideToResume onResume={onResume} />
+          <TouchableOpacity onPress={() => handleFinishPress(onFinish)} activeOpacity={0.6}>
+            <Text style={styles.finishLink}>Finish Run</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <TouchableOpacity style={styles.pauseButton} onPress={onPause} activeOpacity={0.8}>
+          <Text style={styles.pauseButtonText}>⏸  Pause</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -66,6 +96,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 8,
+    alignItems: 'center',
   },
   instructionBanner: {
     backgroundColor: '#1A1A2E',
@@ -73,6 +104,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 16,
     alignItems: 'center',
+    width: '100%',
   },
   instructionText: {
     color: '#fff',
@@ -80,9 +112,23 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
   },
+  pausedBanner: {
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    width: '100%',
+  },
+  pausedText: {
+    color: '#888',
+    fontSize: 15,
+    fontWeight: '600',
+  },
   statsRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    width: '100%',
   },
   stat: {
     flex: 1,
@@ -104,15 +150,25 @@ const styles = StyleSheet.create({
     color: '#888',
     letterSpacing: 0.5,
   },
-  stopButton: {
-    backgroundColor: '#E53935',
+  pauseButton: {
+    backgroundColor: '#1A1A2E',
     paddingVertical: 14,
     borderRadius: 28,
     alignItems: 'center',
+    width: '100%',
   },
-  stopButtonText: {
+  pauseButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '700',
+  },
+  pausedActions: {
+    alignItems: 'center',
+    gap: 16,
+  },
+  finishLink: {
+    fontSize: 14,
+    color: '#E53935',
+    textDecorationLine: 'underline',
   },
 });
