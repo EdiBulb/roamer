@@ -8,9 +8,12 @@ import { DistancePicker } from './src/components/DistancePicker';
 import { RouteInfo } from './src/components/RouteInfo';
 import { SplashScreen } from './src/components/SplashScreen';
 import { RunningScreen } from './src/components/RunningScreen';
+import { RunSummaryScreen } from './src/components/RunSummaryScreen';
 import * as Speech from 'expo-speech';
 import { DEMO_MODE } from './src/constants';
-import { Coordinate, TargetDistance } from './src/types';
+import { Coordinate, Difficulty, RouteMode, TargetDistance } from './src/types';
+import { ModePicker } from './src/components/ModePicker';
+import { DifficultyPicker } from './src/components/DifficultyPicker';
 
 function segmentKm(a: Coordinate, b: Coordinate): number {
   const R = 6371;
@@ -38,9 +41,13 @@ export default function App() {
 function AppContent() {
   const { location, loading: locationLoading, error: locationError } = useLocation();
   const [selectedDistance, setSelectedDistance] = useState<TargetDistance>(5);
-  const { route, status, generate } = useRoute(location, selectedDistance);
+  const [routeMode, setRouteMode] = useState<RouteMode>('loop');
+  const [destination, setDestination] = useState<Coordinate | null>(null);
+  const [difficulty, setDifficulty] = useState<Difficulty>('normal');
+  const { route, status, generate } = useRoute(location, selectedDistance, routeMode, destination, difficulty);
   const [showSplash, setShowSplash] = useState(true);
   const [isRunning, setIsRunning] = useState(false);
+  const [isFinished, setIsFinished] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const isPausedRef = useRef(false);
   const [coveredKm, setCoveredKm] = useState(0);
@@ -143,13 +150,34 @@ function AppContent() {
   }
 
   function handleFinishRun() {
+    Speech.stop();
     setIsRunning(false);
     setIsPaused(false);
+    setIsFinished(true);
+  }
+
+  function handleHome() {
+    setIsFinished(false);
     setSimulatedLocation(null);
+    setCoveredKm(0);
+    setElapsedSeconds(0);
+    setCurrentInstruction(null);
+    setBearing(0);
   }
 
   if (showSplash) {
     return <SplashScreen onFinish={() => setShowSplash(false)} />;
+  }
+
+  if (isFinished && route) {
+    return (
+      <RunSummaryScreen
+        coveredKm={coveredKm}
+        elapsedSeconds={elapsedSeconds}
+        route={route}
+        onHome={handleHome}
+      />
+    );
   }
 
   const displayLocation = simulatedLocation ?? location;
@@ -171,10 +199,22 @@ function AppContent() {
             <Text style={styles.errorText}>{locationError}</Text>
           </View>
         )}
-        {displayLocation && <MapDisplay location={displayLocation} route={route} isRunning={isRunning} bearing={bearing} />}
+        {displayLocation && (
+          <MapDisplay
+            location={displayLocation}
+            route={route}
+            isRunning={isRunning}
+            bearing={bearing}
+            destinationPickerActive={routeMode === 'destination' && !isRunning}
+            destination={destination}
+            onMapPress={(coord) => {
+              setDestination(coord);
+            }}
+          />
+        )}
       </View>
 
-      {/* Running stats card */}
+      {/* Bottom card — 3 states */}
       {isRunning ? (
         <RunningScreen
           coveredKm={coveredKm}
@@ -185,15 +225,29 @@ function AppContent() {
           onResume={handleResume}
           onFinish={handleFinishRun}
         />
+      ) : routeMode === 'destination' && !destination ? (
+        /* Destination mode — no pin yet: minimal strip so map is prominent */
+        <View style={styles.cardMinimal}>
+          <Text style={styles.appTitle}>Random Run</Text>
+          <ModePicker selected={routeMode} onSelect={(m) => { setRouteMode(m); setDestination(null); }} />
+        </View>
       ) : (
-        /* Main card */
+        /* Loop mode OR Destination mode with pin set */
         <View style={styles.card}>
           <Text style={styles.appTitle}>Random Run</Text>
 
-          <DistancePicker
-            selected={selectedDistance}
-            onSelect={(d) => setSelectedDistance(d)}
-          />
+          <ModePicker selected={routeMode} onSelect={(m) => { setRouteMode(m); setDestination(null); }} />
+
+          {routeMode === 'loop' ? (
+            <DistancePicker selected={selectedDistance} onSelect={(d) => setSelectedDistance(d)} />
+          ) : (
+            destination && (
+              <DifficultyPicker
+                selected={difficulty}
+                onSelect={setDifficulty}
+              />
+            )
+          )}
 
           <RouteInfo
             status={status}
@@ -203,7 +257,6 @@ function AppContent() {
 
           {status === 'success' ? (
             <>
-              {/* Primary CTA */}
               <TouchableOpacity
                 style={styles.startRunButton}
                 onPress={handleStartRun}
@@ -211,8 +264,6 @@ function AppContent() {
               >
                 <Text style={styles.startRunButtonText}>▶  Start Run</Text>
               </TouchableOpacity>
-
-              {/* Secondary action — text link, not a competing button */}
               <TouchableOpacity onPress={generate} disabled={isGenerating} activeOpacity={0.6}>
                 <Text style={styles.regenerateLink}>
                   {isGenerating ? 'Generating...' : '↺  Regenerate Route'}
@@ -320,5 +371,25 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '700',
+  },
+  tapHintText: {
+    fontSize: 13,
+    color: '#888',
+    textAlign: 'center',
+  },
+  cardMinimal: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 20,
+    paddingBottom: 32,
+    paddingHorizontal: 24,
+    gap: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 8,
+    alignItems: 'center',
   },
 });

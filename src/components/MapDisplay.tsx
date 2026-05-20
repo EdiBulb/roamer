@@ -1,5 +1,5 @@
 import MapboxGL from '@rnmapbox/maps';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { MAPBOX_TOKEN, DEFAULT_ZOOM, DEMO_MODE } from '../constants';
 import { getBoundingBox } from '../services/mapboxApi';
 import { Coordinate, RunRoute } from '../types';
@@ -11,9 +11,20 @@ interface Props {
   route: RunRoute | null;
   isRunning?: boolean;
   bearing?: number;
+  destinationPickerActive?: boolean;
+  destination?: Coordinate | null;
+  onMapPress?: (coord: Coordinate) => void;
 }
 
-export function MapDisplay({ location, route, isRunning = false, bearing = 0 }: Props) {
+export function MapDisplay({
+  location,
+  route,
+  isRunning = false,
+  bearing = 0,
+  destinationPickerActive = false,
+  destination = null,
+  onMapPress,
+}: Props) {
   const center: [number, number] = [location.longitude, location.latitude];
 
   const routeGeoJSON: GeoJSON.Feature<GeoJSON.LineString> | null = route
@@ -27,11 +38,20 @@ export function MapDisplay({ location, route, isRunning = false, bearing = 0 }: 
       }
     : null;
 
+  function handlePress(feature: GeoJSON.Feature) {
+    if (!destinationPickerActive || !onMapPress) return;
+    const [longitude, latitude] = (feature.geometry as GeoJSON.Point).coordinates;
+    onMapPress({ latitude, longitude });
+  }
+
   return (
     <View style={styles.container}>
-      <MapboxGL.MapView style={styles.map} styleURL={MapboxGL.StyleURL.Street}>
+      <MapboxGL.MapView
+        style={styles.map}
+        styleURL={MapboxGL.StyleURL.Street}
+        onPress={handlePress}
+      >
         {isRunning ? (
-          // Navigation mode: follow current position, rotate to direction of travel
           <MapboxGL.Camera
             centerCoordinate={center}
             zoomLevel={18}
@@ -61,7 +81,6 @@ export function MapDisplay({ location, route, isRunning = false, bearing = 0 }: 
           />
         )}
 
-        {/* Show real GPS dot in normal mode, fake marker in demo mode */}
         {DEMO_MODE ? (
           <MapboxGL.PointAnnotation id="demo-location" coordinate={center}>
             <View style={styles.markerOuter}>
@@ -70,6 +89,17 @@ export function MapDisplay({ location, route, isRunning = false, bearing = 0 }: 
           </MapboxGL.PointAnnotation>
         ) : (
           <MapboxGL.UserLocation visible androidRenderMode="gps" />
+        )}
+
+        {destination && (
+          <MapboxGL.PointAnnotation
+            id="destination-pin"
+            coordinate={[destination.longitude, destination.latitude]}
+          >
+            <View style={styles.destinationOuter}>
+              <View style={styles.destinationInner} />
+            </View>
+          </MapboxGL.PointAnnotation>
         )}
 
         {routeGeoJSON && (
@@ -86,6 +116,14 @@ export function MapDisplay({ location, route, isRunning = false, bearing = 0 }: 
           </MapboxGL.ShapeSource>
         )}
       </MapboxGL.MapView>
+
+      {destinationPickerActive && (
+        <View style={styles.tapHint} pointerEvents="none">
+          <View style={styles.tapHintBadge}>
+            <Text style={styles.tapHintText}>📍  Tap the map to set destination</Text>
+          </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -113,5 +151,39 @@ const styles = StyleSheet.create({
     backgroundColor: '#4285F4',
     borderWidth: 2,
     borderColor: '#fff',
+  },
+  destinationOuter: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: 'rgba(229, 57, 53, 0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  destinationInner: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#E53935',
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  tapHint: {
+    position: 'absolute',
+    top: 16,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
+  tapHintBadge: {
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  tapHintText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '600',
   },
 });

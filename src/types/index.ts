@@ -1,6 +1,7 @@
+export type RouteMode = 'loop' | 'destination';
+export type Difficulty = 'easy' | 'normal' | 'hard';
 export type TargetDistance = 3 | 5 | 10;
 
-// GPS 좌표 하나
 export interface Coordinate {
   latitude: number;
   longitude: number;
@@ -12,10 +13,9 @@ export interface RouteStep {
 }
 
 export interface RunRoute {
-  coordinates: Coordinate[]; // 좌표 목록
-  distanceKm: number; // 총 거리
-  steps: RouteStep[]; // 단계(음성 안내)
+  coordinates: Coordinate[];
+  distanceKm: number;
+  steps: RouteStep[];
 }
 
-// 앱의 상태를 나타내는 타입
 export type RouteStatus = 'idle' | 'loading' | 'success' | 'error';
