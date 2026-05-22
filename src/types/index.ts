@@ -19,3 +19,12 @@ export interface RunRoute {
 }
 
 export type RouteStatus = 'idle' | 'loading' | 'success' | 'error';
+
+export interface RunRecord {
+  id: string;
+  name: string;
+  date: string;            // ISO timestamp
+  distanceKm: number;
+  elapsedSeconds: number;
+  routeCoordinates: Coordinate[];
+}

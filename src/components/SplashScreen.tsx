@@ -30,9 +30,9 @@ export function SplashScreen({ onFinish }: Props) {
   return (
     <View style={styles.container}>
       <Animated.View style={[styles.content, { opacity }]}>
-        <Text style={styles.logo}>RandomRun</Text>
+        <Text style={styles.logo}>Roamer</Text>
         <View style={styles.line} />
-        <Text style={styles.tagline}>Run somewhere new</Text>
+        <Text style={styles.tagline}>someone run somewhere new.</Text>
       </Animated.View>
     </View>
   );

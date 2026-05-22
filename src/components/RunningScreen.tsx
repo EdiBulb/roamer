@@ -4,6 +4,7 @@ import { SlideToResume } from './SlideToResume';
 interface Props {
   coveredKm: number;
   elapsedSeconds: number;
+  totalKm: number;
   instruction: string | null;
   isPaused: boolean;
   onPause: () => void;
@@ -36,7 +37,9 @@ function handleFinishPress(onFinish: () => void) {
   );
 }
 
-export function RunningScreen({ coveredKm, elapsedSeconds, instruction, isPaused, onPause, onResume, onFinish }: Props) {
+export function RunningScreen({ coveredKm, elapsedSeconds, totalKm, instruction, isPaused, onPause, onResume, onFinish }: Props) {
+  const remainingKm = Math.max(0, totalKm - coveredKm);
+
   return (
     <View style={styles.card}>
       {isPaused ? (
@@ -49,20 +52,29 @@ export function RunningScreen({ coveredKm, elapsedSeconds, instruction, isPaused
         </View>
       ) : null}
 
-      <View style={styles.statsRow}>
-        <View style={styles.stat}>
-          <Text style={styles.statValue}>{coveredKm.toFixed(2)}</Text>
-          <Text style={styles.statLabel}>km covered</Text>
+      <View style={styles.statsGrid}>
+        <View style={styles.statsRow}>
+          <View style={styles.stat}>
+            <Text style={styles.statValue}>{coveredKm.toFixed(2)}</Text>
+            <Text style={styles.statLabel}>km covered</Text>
+          </View>
+          <View style={styles.statVerticalDivider} />
+          <View style={styles.stat}>
+            <Text style={styles.statValue}>{formatTime(elapsedSeconds)}</Text>
+            <Text style={styles.statLabel}>time</Text>
+          </View>
         </View>
-        <View style={styles.statDivider} />
-        <View style={styles.stat}>
-          <Text style={styles.statValue}>{formatTime(elapsedSeconds)}</Text>
-          <Text style={styles.statLabel}>time</Text>
-        </View>
-        <View style={styles.statDivider} />
-        <View style={styles.stat}>
-          <Text style={styles.statValue}>{formatPace(coveredKm, elapsedSeconds)}</Text>
-          <Text style={styles.statLabel}>min/km</Text>
+        <View style={styles.statHorizontalDivider} />
+        <View style={styles.statsRow}>
+          <View style={styles.stat}>
+            <Text style={styles.statValue}>{formatPace(coveredKm, elapsedSeconds)}</Text>
+            <Text style={styles.statLabel}>min/km</Text>
+          </View>
+          <View style={styles.statVerticalDivider} />
+          <View style={styles.stat}>
+            <Text style={styles.statValue}>{remainingKm.toFixed(2)}</Text>
+            <Text style={styles.statLabel}>km left</Text>
+          </View>
         </View>
       </View>
 
@@ -125,19 +137,26 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
   },
+  statsGrid: {
+    width: '100%',
+  },
   statsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     width: '100%',
   },
   stat: {
-    flex: 1,
+    width: '50%',
     alignItems: 'center',
+    paddingVertical: 12,
     gap: 4,
   },
-  statDivider: {
-    width: 1,
-    height: 40,
+  statVerticalDivider: {
+    width: 0,
+  },
+  statHorizontalDivider: {
+    width: '100%',
+    height: 1,
     backgroundColor: '#E0E0E0',
   },
   statValue: {

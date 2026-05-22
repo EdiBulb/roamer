@@ -1,6 +1,6 @@
 module.exports = {
   expo: {
-    name: 'random-run',
+    name: 'Roamer',
     slug: 'random-run',
     version: '1.0.0',
     orientation: 'portrait',
