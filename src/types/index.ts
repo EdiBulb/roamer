@@ -18,7 +18,8 @@ export interface RunRoute {
   coordinates: Coordinate[];
   distanceKm: number;
   steps: RouteStep[];
-  streetNames: string[];  // all named streets in this route
+  streetNames: string[];
+  waypoints: Coordinate[];  // debug: waypoints used to generate this route
 }
 
 export type RouteStatus = 'idle' | 'loading' | 'success' | 'error';

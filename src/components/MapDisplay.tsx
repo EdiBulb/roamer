@@ -115,6 +115,26 @@ export function MapDisplay({
             />
           </MapboxGL.ShapeSource>
         )}
+
+        {route?.waypoints && route.waypoints.length > 0 && (
+          <MapboxGL.ShapeSource
+            id="waypoints-source"
+            shape={{
+              type: 'FeatureCollection',
+              features: route.waypoints.map((wp, i) => ({
+                type: 'Feature',
+                id: String(i),
+                properties: {},
+                geometry: { type: 'Point', coordinates: [wp.longitude, wp.latitude] },
+              })),
+            }}
+          >
+            <MapboxGL.CircleLayer
+              id="waypoints-layer"
+              style={{ circleRadius: 6, circleColor: '#000', circleStrokeWidth: 2, circleStrokeColor: '#fff' }}
+            />
+          </MapboxGL.ShapeSource>
+        )}
       </MapboxGL.MapView>
 
       {destinationPickerActive && (

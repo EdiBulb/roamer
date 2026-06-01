@@ -40,17 +40,20 @@ function offsetCoordinate(origin: Coordinate, bearing: number, distanceKm: numbe
 // Jitter is capped at 25% of the interval to preserve minimum angular separation between
 // consecutive waypoints, which prevents Mapbox from routing back down the same road.
 function generateWaypoints(origin: Coordinate, targetKm: number): Coordinate[] {
-  const count = Math.random() < 0.5 ? 4 : 5;
-  const radius = targetKm / (2 * Math.PI * 1.2);
-  const baseBearing = Math.random() * 360;
-  const interval = 360 / count;
-  const maxJitter = interval * 0.25;
-
+  const count = Math.random() < 0.5 ? 3 : 4;
+  // Each step covers roughly equal share of total distance; +1 accounts for return leg
+  const stepKm = (targetKm / (count + 1)) * (0.85 + Math.random() * 0.3);
+  // Random initial direction
+  let bearing = Math.random() * 360;
+  let prev = origin;
   const waypoints: Coordinate[] = [];
+
   for (let i = 0; i < count; i++) {
-    const bearing = baseBearing + i * interval + (Math.random() - 0.5) * 2 * maxJitter;
-    const distFactor = 0.8 + Math.random() * 0.4;
-    waypoints.push(offsetCoordinate(origin, bearing, radius * distFactor));
+    // Turn at most ±80° from the previous bearing to keep moving "forward"
+    const turn = (Math.random() - 0.5) * 160;
+    bearing = (bearing + turn + 360) % 360;
+    prev = offsetCoordinate(prev, bearing, stepKm);
+    waypoints.push(prev);
   }
   return waypoints;
 }
@@ -70,26 +73,54 @@ export function getBoundingBox(coordinates: Coordinate[]): {
   };
 }
 
-export async function fetchRandomRoute(origin: Coordinate, targetKm: number): Promise<RunRoute> {
-  const waypoints = generateWaypoints(origin, targetKm);
+function hasUTurn(legs: any[]): boolean {
+  for (const leg of legs) {
+    for (const step of leg.steps ?? []) {
+      const type = step.maneuver?.type;
+      // depart/arrive steps have unreliable or missing bearing data — skip them
+      if (type === 'depart' || type === 'arrive') continue;
 
-  // Loop: origin → waypoint1 → waypoint2 → origin
-  const allPoints = [origin, ...waypoints, origin];
+      if (step.maneuver?.modifier === 'uturn') return true;
 
-  const coords = allPoints
-    .map((c) => `${c.longitude},${c.latitude}`)
-    .join(';');
+      const before: number | undefined = step.maneuver?.bearing_before;
+      const after: number | undefined = step.maneuver?.bearing_after;
+      if (before == null || after == null) continue;
 
-  const url =
-    `${DIRECTIONS_URL}/${coords}` +
-    `?geometries=geojson&overview=full&steps=true&access_token=${MAPBOX_TOKEN}`;
+      let diff = Math.abs(after - before);
+      if (diff > 180) diff = 360 - diff;
+      if (diff > 150) return true;
+    }
+  }
+  return false;
+}
 
+async function fetchRawRoute(points: Coordinate[]): Promise<{ route: any; snappedWaypoints: Coordinate[] }> {
+  const coords = points.map((c) => `${c.longitude},${c.latitude}`).join(';');
+  const url = `${DIRECTIONS_URL}/${coords}?geometries=geojson&overview=full&steps=true&access_token=${MAPBOX_TOKEN}`;
   const response = await fetch(url);
   if (!response.ok) throw new Error('Failed to fetch route from Mapbox.');
-
   const data = await response.json();
   const route = data.routes?.[0];
   if (!route) throw new Error('No route data returned.');
+  // Exclude first (origin) and last (destination) — keep only intermediate waypoints
+  const snappedWaypoints: Coordinate[] = (data.waypoints ?? [])
+    .slice(1, -1)
+    .map((wp: any) => ({ latitude: wp.location[1], longitude: wp.location[0] }));
+  return { route, snappedWaypoints };
+}
+
+export async function fetchRandomRoute(origin: Coordinate, targetKm: number): Promise<RunRoute> {
+  const MAX_ATTEMPTS = 3;
+  let route: any = null;
+  let usedWaypoints: Coordinate[] = [];
+
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    usedWaypoints = generateWaypoints(origin, targetKm);
+    const result = await fetchRawRoute([origin, ...usedWaypoints, origin]);
+    route = result.route;
+    usedWaypoints = result.snappedWaypoints;
+    if (!hasUTurn(route.legs ?? [])) break;
+  }
 
   // Mapbox returns coordinates as [longitude, latitude]; we convert to { latitude, longitude }
   const coordinates: Coordinate[] = route.geometry.coordinates.map(
@@ -130,7 +161,7 @@ export async function fetchRandomRoute(origin: Coordinate, targetKm: number): Pr
     legStartM += leg.distance ?? 0;
   }
 
-  return { coordinates, distanceKm, steps, streetNames: Array.from(streetNameSet) };
+  return { coordinates, distanceKm, steps, streetNames: Array.from(streetNameSet), waypoints: usedWaypoints };
 }
 
 // Straight-line distance between two coordinates in km
@@ -197,20 +228,17 @@ export async function fetchDestinationRoute(
   destination: Coordinate,
   difficulty: Difficulty
 ): Promise<RunRoute> {
-  const waypoints = generateDestinationWaypoints(origin, destination, difficulty);
-  const allPoints = [origin, ...waypoints, destination];
+  const MAX_ATTEMPTS = 3;
+  let route: any = null;
+  let usedWaypoints: Coordinate[] = [];
 
-  const coords = allPoints.map((c) => `${c.longitude},${c.latitude}`).join(';');
-  const url =
-    `${DIRECTIONS_URL}/${coords}` +
-    `?geometries=geojson&overview=full&steps=true&access_token=${MAPBOX_TOKEN}`;
-
-  const response = await fetch(url);
-  if (!response.ok) throw new Error('Failed to fetch destination route from Mapbox.');
-
-  const data = await response.json();
-  const route = data.routes?.[0];
-  if (!route) throw new Error('No route data returned.');
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    usedWaypoints = generateDestinationWaypoints(origin, destination, difficulty);
+    const result = await fetchRawRoute([origin, ...usedWaypoints, destination]);
+    route = result.route;
+    usedWaypoints = result.snappedWaypoints;
+    if (!hasUTurn(route.legs ?? [])) break;
+  }
 
   const coordinates: Coordinate[] = route.geometry.coordinates.map(
     ([longitude, latitude]: [number, number]) => ({ latitude, longitude })
@@ -241,5 +269,5 @@ export async function fetchDestinationRoute(
     legStartM += leg.distance ?? 0;
   }
 
-  return { coordinates, distanceKm, steps, streetNames: Array.from(streetNameSet) };
+  return { coordinates, distanceKm, steps, streetNames: Array.from(streetNameSet), waypoints: usedWaypoints };
 }

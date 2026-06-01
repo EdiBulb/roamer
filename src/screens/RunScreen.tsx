@@ -9,6 +9,7 @@ import { RouteInfo } from '../components/RouteInfo';
 import { RunningScreen } from '../components/RunningScreen';
 import { RunSummaryScreen } from '../components/RunSummaryScreen';
 import * as Speech from 'expo-speech';
+import * as Location from 'expo-location';
 import { DEMO_MODE } from '../constants';
 import { Coordinate, Difficulty, RouteMode, TargetDistance } from '../types';
 import { ModePicker } from '../components/ModePicker';
@@ -118,6 +119,68 @@ export function RunScreen() {
     };
   }, [isRunning, route]);
 
+  useEffect(() => {
+    if (!isRunning || DEMO_MODE || !route) return;
+
+    const steps = route.steps ?? [];
+    const ANNOUNCE_BEFORE_M = 100;
+    const MIN_GAP_M = 80;
+
+    let prevCoord: Coordinate | null = null;
+    let localCoveredM = 0;
+    let stepIdx = 0;
+    let cancelled = false;
+    let sub: Location.LocationSubscription | null = null;
+
+    Speech.speak('Starting your run. Good luck!', { language: 'en' });
+
+    Location.watchPositionAsync(
+      {
+        accuracy: Location.Accuracy.BestForNavigation,
+        timeInterval: 2000,
+        distanceInterval: 3,
+      },
+      (pos) => {
+        if (isPausedRef.current || cancelled) return;
+
+        const coord: Coordinate = {
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+        };
+
+        setSimulatedLocation(coord);
+
+        if (prevCoord) {
+          const segM = segmentKm(prevCoord, coord) * 1000;
+          localCoveredM += segM;
+          setCoveredKm(localCoveredM / 1000);
+          setBearing(calcBearing(prevCoord, coord));
+
+          if (stepIdx < steps.length && localCoveredM >= steps[stepIdx].distanceFromStartM - ANNOUNCE_BEFORE_M) {
+            Speech.speak(steps[stepIdx].instruction, { language: 'en' });
+            setCurrentInstruction(steps[stepIdx].instruction);
+            const announcedAt = steps[stepIdx].distanceFromStartM;
+            stepIdx += 1;
+            while (stepIdx < steps.length && steps[stepIdx].distanceFromStartM - announcedAt < MIN_GAP_M) {
+              stepIdx += 1;
+            }
+          }
+        }
+
+        prevCoord = coord;
+      }
+    ).then((s) => {
+      if (cancelled) s.remove();
+      else sub = s;
+    });
+
+    return () => {
+      cancelled = true;
+      sub?.remove();
+      Speech.stop();
+    };
+  }, [isRunning, route]);
+
   function handleStartRun() {
     setCoveredKm(0);
     setElapsedSeconds(0);
@@ -207,12 +270,12 @@ export function RunScreen() {
         />
       ) : routeMode === 'destination' && !destination ? (
         <View style={styles.cardMinimal}>
-          <Text style={styles.appTitle}>Random Run</Text>
+          <Text style={styles.appTitle}>Roamer</Text>
           <ModePicker selected={routeMode} onSelect={(m) => { setRouteMode(m); setDestination(null); }} />
         </View>
       ) : (
         <View style={styles.card}>
-          <Text style={styles.appTitle}>Random Run</Text>
+          <Text style={styles.appTitle}>Roamer</Text>
 
           <ModePicker selected={routeMode} onSelect={(m) => { setRouteMode(m); setDestination(null); }} />
 

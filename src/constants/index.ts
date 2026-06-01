@@ -8,7 +8,7 @@ export const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN ?? '';
 export const DEFAULT_ZOOM = 14;
 
 // Set to true to use a fixed demo location instead of real GPS (e.g. for LinkedIn recordings)
-export const DEMO_MODE = true;
+export const DEMO_MODE = false;
 
 export const DEMO_LOCATION: Coordinate = {
   latitude: -36.8485,
