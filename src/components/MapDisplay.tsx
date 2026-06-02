@@ -81,15 +81,11 @@ export function MapDisplay({
           />
         )}
 
-        {DEMO_MODE ? (
-          <MapboxGL.PointAnnotation id="demo-location" coordinate={center}>
-            <View style={styles.markerOuter}>
-              <View style={styles.markerInner} />
-            </View>
-          </MapboxGL.PointAnnotation>
-        ) : (
-          <MapboxGL.UserLocation visible androidRenderMode="gps" />
-        )}
+        <MapboxGL.PointAnnotation id="user-location" coordinate={center}>
+          <View style={styles.markerOuter}>
+            <View style={styles.markerInner} />
+          </View>
+        </MapboxGL.PointAnnotation>
 
         {destination && (
           <MapboxGL.PointAnnotation

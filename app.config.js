@@ -30,5 +30,10 @@ module.exports = {
     plugins: [
       '@rnmapbox/maps',
     ],
+    extra: {
+      eas: {
+        projectId: '0667cdd2-f70b-43f3-b5de-09c564accb6c',
+      },
+    },
   },
 };
