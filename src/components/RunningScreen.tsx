@@ -5,7 +5,6 @@ interface Props {
   coveredKm: number;
   elapsedSeconds: number;
   totalKm: number;
-  instruction: string | null;
   isPaused: boolean;
   onPause: () => void;
   onResume: () => void;
@@ -37,20 +36,22 @@ function handleFinishPress(onFinish: () => void) {
   );
 }
 
-export function RunningScreen({ coveredKm, elapsedSeconds, totalKm, instruction, isPaused, onPause, onResume, onFinish }: Props) {
+export function RunningScreen({ coveredKm, elapsedSeconds, totalKm, isPaused, onPause, onResume, onFinish }: Props) {
   const remainingKm = Math.max(0, totalKm - coveredKm);
 
   return (
     <View style={styles.card}>
-      {isPaused ? (
+      {/* Always visible when collapsed */}
+      <View style={styles.sheetHeader}>
+        <View style={styles.dragHandle} />
+        <Text style={styles.appName}>Roamer</Text>
+      </View>
+
+      {isPaused && (
         <View style={styles.pausedBanner}>
           <Text style={styles.pausedText}>⏸  Paused</Text>
         </View>
-      ) : instruction ? (
-        <View style={styles.instructionBanner}>
-          <Text style={styles.instructionText}>{instruction}</Text>
-        </View>
-      ) : null}
+      )}
 
       <View style={styles.statsGrid}>
         <View style={styles.statsRow}>
@@ -99,10 +100,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    paddingTop: 24,
-    paddingBottom: 60,
+    paddingTop: 12,
+    paddingBottom: 80,
     paddingHorizontal: 24,
-    gap: 20,
+    gap: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.08,
@@ -110,19 +111,23 @@ const styles = StyleSheet.create({
     elevation: 8,
     alignItems: 'center',
   },
-  instructionBanner: {
-    backgroundColor: '#1A1A2E',
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
+  sheetHeader: {
     alignItems: 'center',
     width: '100%',
+    gap: 6,
+    paddingBottom: 4,
   },
-  instructionText: {
-    color: '#fff',
+  dragHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#D0D0D0',
+  },
+  appName: {
     fontSize: 15,
-    fontWeight: '600',
-    textAlign: 'center',
+    fontWeight: '700',
+    color: '#1A1A1A',
+    letterSpacing: 0.5,
   },
   pausedBanner: {
     backgroundColor: '#F5F5F5',

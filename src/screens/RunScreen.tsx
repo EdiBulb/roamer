@@ -1,6 +1,8 @@
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, PanResponder, ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
+
+const COLLAPSED_VISIBLE = 90;
 import { useLocation } from '../hooks/useLocation';
 import { useRoute } from '../hooks/useRoute';
 import { MapDisplay } from '../components/MapDisplay';
@@ -46,6 +48,33 @@ export function RunScreen() {
   const [isPaused, setIsPaused] = useState(false);
   const isPausedRef = useRef(false);
   const [coveredKm, setCoveredKm] = useState(0);
+  const panelNaturalHeightRef = useRef(0);
+  const slideY = useRef(new Animated.Value(0)).current;
+  const slideStartRef = useRef(0);
+
+  const panResponder = useRef(PanResponder.create({
+    onMoveShouldSetPanResponder: (_, { dy }) => Math.abs(dy) > 5,
+    onPanResponderGrant: () => {
+      slideY.stopAnimation();
+      // _value는 Animated.Value의 현재값을 동기적으로 읽는 가장 신뢰할 수 있는 방법
+      slideStartRef.current = (slideY as any)._value;
+    },
+    onPanResponderMove: (_, { dy }) => {
+      const maxSlide = Math.max(0, panelNaturalHeightRef.current - COLLAPSED_VISIBLE);
+      slideY.setValue(Math.max(0, Math.min(maxSlide, slideStartRef.current + dy)));
+    },
+    onPanResponderRelease: (_, { dy, vy }) => {
+      const maxSlide = Math.max(0, panelNaturalHeightRef.current - COLLAPSED_VISIBLE);
+      const currentVal = slideStartRef.current + dy;
+      const collapsed = Math.abs(vy) > 0.3 ? vy > 0 : currentVal > maxSlide / 2;
+      Animated.spring(slideY, {
+        toValue: collapsed ? maxSlide : 0,
+        useNativeDriver: false,
+        bounciness: 4,
+        speed: 14,
+      }).start();
+    },
+  })).current;
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [simulatedLocation, setSimulatedLocation] = useState<Coordinate | null>(null);
   const [currentInstruction, setCurrentInstruction] = useState<string | null>(null);
@@ -187,6 +216,7 @@ export function RunScreen() {
     setCurrentInstruction(null);
     setSimulatedLocation(location);
     setIsPaused(false);
+    slideY.setValue(0);
     setIsRunning(true);
   }
 
@@ -255,20 +285,32 @@ export function RunScreen() {
             onMapPress={(coord) => setDestination(coord)}
           />
         )}
+        {isRunning && currentInstruction && (
+          <View style={styles.instructionOverlay}>
+            <Text style={styles.instructionOverlayText}>{currentInstruction}</Text>
+          </View>
+        )}
       </View>
 
-      {isRunning ? (
-        <RunningScreen
-          coveredKm={coveredKm}
-          elapsedSeconds={elapsedSeconds}
-          totalKm={route?.distanceKm ?? 0}
-          instruction={currentInstruction}
-          isPaused={isPaused}
-          onPause={handlePause}
-          onResume={handleResume}
-          onFinish={handleFinishRun}
-        />
-      ) : routeMode === 'destination' && !destination ? (
+      {isRunning && (
+        <Animated.View
+          style={[styles.runningPanel, { transform: [{ translateY: slideY }] }]}
+          onLayout={(e) => { panelNaturalHeightRef.current = e.nativeEvent.layout.height; }}
+          {...panResponder.panHandlers}
+        >
+          <RunningScreen
+            coveredKm={coveredKm}
+            elapsedSeconds={elapsedSeconds}
+            totalKm={route?.distanceKm ?? 0}
+            isPaused={isPaused}
+            onPause={handlePause}
+            onResume={handleResume}
+            onFinish={handleFinishRun}
+          />
+        </Animated.View>
+      )}
+
+      {!isRunning && (routeMode === 'destination' && !destination ? (
         <View style={styles.cardMinimal}>
           <Text style={styles.appTitle}>Roamer</Text>
           <ModePicker selected={routeMode} onSelect={(m) => { setRouteMode(m); setDestination(null); }} />
@@ -319,7 +361,7 @@ export function RunScreen() {
             </TouchableOpacity>
           )}
         </View>
-      )}
+      ))}
     </View>
   );
 }
@@ -327,6 +369,34 @@ export function RunScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
   mapArea: { flex: 1 },
+  runningPanel: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+  },
+  instructionOverlay: {
+    position: 'absolute',
+    top: 16,
+    left: 16,
+    right: 16,
+    backgroundColor: '#1A1A2E',
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    zIndex: 10,
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+  },
+  instructionOverlayText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
   loadingText: { fontSize: 14, color: '#666' },
   errorText: { fontSize: 14, color: '#E53935', textAlign: 'center', paddingHorizontal: 24 },
