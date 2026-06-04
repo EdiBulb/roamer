@@ -46,6 +46,7 @@ export function RunScreen() {
   const [isRunning, setIsRunning] = useState(false);
   const [isFinished, setIsFinished] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const [isFollowMode, setIsFollowMode] = useState(true);
   const isPausedRef = useRef(false);
   const [coveredKm, setCoveredKm] = useState(0);
   const panelNaturalHeightRef = useRef(0);
@@ -217,6 +218,7 @@ export function RunScreen() {
     setSimulatedLocation(location);
     setIsPaused(false);
     slideY.setValue(0);
+    setIsFollowMode(true);
     setIsRunning(true);
   }
 
@@ -283,6 +285,9 @@ export function RunScreen() {
             destinationPickerActive={routeMode === 'destination' && !isRunning}
             destination={destination}
             onMapPress={(coord) => setDestination(coord)}
+            isFollowMode={isFollowMode}
+            onUserDrag={() => setIsFollowMode(false)}
+            onFollowResume={() => setIsFollowMode(true)}
           />
         )}
         {isRunning && currentInstruction && (

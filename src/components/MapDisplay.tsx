@@ -1,6 +1,6 @@
 import MapboxGL from '@rnmapbox/maps';
-import { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Magnetometer } from 'expo-sensors';
 import { MAPBOX_TOKEN, DEFAULT_ZOOM } from '../constants';
 import { getBoundingBox } from '../services/mapboxApi';
@@ -16,6 +16,9 @@ interface Props {
   destinationPickerActive?: boolean;
   destination?: Coordinate | null;
   onMapPress?: (coord: Coordinate) => void;
+  isFollowMode?: boolean;
+  onUserDrag?: () => void;
+  onFollowResume?: () => void;
 }
 
 export function MapDisplay({
@@ -26,10 +29,26 @@ export function MapDisplay({
   destinationPickerActive = false,
   destination = null,
   onMapPress,
+  isFollowMode = true,
+  onUserDrag,
+  onFollowResume,
 }: Props) {
   const center: [number, number] = [location.longitude, location.latitude];
+  const cameraRef = useRef<MapboxGL.Camera>(null);
 
   const [compassHeading, setCompassHeading] = useState(0);
+
+  useEffect(() => {
+    if (!isRunning || !isFollowMode) return;
+    cameraRef.current?.setCamera({
+      centerCoordinate: [location.longitude, location.latitude],
+      zoomLevel: 18,
+      heading: bearing,
+      pitch: 45,
+      animationDuration: 400,
+      animationMode: 'easeTo',
+    });
+  }, [location, bearing, isFollowMode, isRunning]);
 
   useEffect(() => {
     Magnetometer.setUpdateInterval(100);
@@ -69,16 +88,14 @@ export function MapDisplay({
         style={styles.map}
         styleURL={MapboxGL.StyleURL.Street}
         onPress={handlePress}
+        onRegionIsChanging={(feature) => {
+          if (isRunning && feature.properties?.isUserInteraction) {
+            onUserDrag?.();
+          }
+        }}
       >
         {isRunning ? (
-          <MapboxGL.Camera
-            centerCoordinate={center}
-            zoomLevel={18}
-            heading={bearing}
-            pitch={45}
-            animationMode="easeTo"
-            animationDuration={400}
-          />
+          <MapboxGL.Camera ref={cameraRef} />
         ) : route ? (
           <MapboxGL.Camera
             bounds={{
@@ -153,6 +170,23 @@ export function MapDisplay({
         )}
       </MapboxGL.MapView>
 
+      {isRunning && (
+        <TouchableOpacity
+          style={[styles.followButton, isFollowMode ? styles.followButtonActive : styles.followButtonInactive]}
+          onPress={onFollowResume}
+          activeOpacity={0.8}
+        >
+          <Image
+            source={isFollowMode
+              ? require('../../assets/icons/follow-active.png')
+              : require('../../assets/icons/follow-inactive.png')
+            }
+            style={styles.followIcon}
+            resizeMode="contain"
+          />
+        </TouchableOpacity>
+      )}
+
       {destinationPickerActive && (
         <View style={styles.tapHint} pointerEvents="none">
           <View style={styles.tapHintBadge}>
@@ -218,6 +252,24 @@ const styles = StyleSheet.create({
     backgroundColor: '#E53935',
     borderWidth: 2,
     borderColor: '#fff',
+  },
+  followButton: {
+    position: 'absolute',
+    bottom: 110,
+    right: 8,
+    borderRadius: 40,
+  },
+  followButtonActive: {
+    borderWidth: 2.5,
+    borderColor: '#4285F4',
+  },
+  followButtonInactive: {
+    borderWidth: 2.5,
+    borderColor: '#aaa',
+  },
+  followIcon: {
+    width: 50,
+    height: 50,
   },
   tapHint: {
     position: 'absolute',
