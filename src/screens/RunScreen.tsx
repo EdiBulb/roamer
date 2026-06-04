@@ -49,6 +49,8 @@ export function RunScreen() {
   const [isFollowMode, setIsFollowMode] = useState(true);
   const [nextWaypointIndex, setNextWaypointIndex] = useState(0);
   const nextWaypointIndexRef = useRef(0);
+  const finishCoordRef = useRef<Coordinate | null>(null);
+  const hasAutoFinishedRef = useRef(false);
   const isPausedRef = useRef(false);
   const [coveredKm, setCoveredKm] = useState(0);
   const panelNaturalHeightRef = useRef(0);
@@ -135,8 +137,23 @@ export function RunScreen() {
       const lookAhead = Math.min(coordIdx + 5, coords.length - 1);
       if (lookAhead > coordIdx) setBearing(calcBearing(coords[coordIdx], coords[lookAhead]));
 
+      const finishCoord = finishCoordRef.current;
+      if (
+        finishCoord &&
+        !hasAutoFinishedRef.current &&
+        localCoveredM >= totalM * 0.8 &&
+        segmentKm(coords[coordIdx], finishCoord) * 1000 < 50
+      ) {
+        hasAutoFinishedRef.current = true;
+        Speech.speak('You have completed the route! Great job!', {
+          language: 'en',
+          onDone: () => { setIsRunning(false); setIsPaused(false); setIsFinished(true); },
+          onError: () => { setIsRunning(false); setIsPaused(false); setIsFinished(true); },
+        });
+        return;
+      }
+
       if (localCoveredM >= totalM) {
-        Speech.speak('You have completed the route!', { language: 'en' });
         return;
       }
 
@@ -194,6 +211,22 @@ export function RunScreen() {
           setNextWaypointIndex(nextWaypointIndexRef.current);
         }
 
+        const finishCoord = finishCoordRef.current;
+        if (
+          finishCoord &&
+          !hasAutoFinishedRef.current &&
+          localCoveredM >= route.distanceKm * 1000 * 0.8 &&
+          segmentKm(coord, finishCoord) * 1000 < 50
+        ) {
+          hasAutoFinishedRef.current = true;
+          Speech.speak('You have completed the route! Great job!', {
+            language: 'en',
+            onDone: () => { setIsRunning(false); setIsPaused(false); setIsFinished(true); },
+            onError: () => { setIsRunning(false); setIsPaused(false); setIsFinished(true); },
+          });
+          return;
+        }
+
         if (prevCoord) {
           const segM = segmentKm(prevCoord, coord) * 1000;
           localCoveredM += segM;
@@ -235,6 +268,8 @@ export function RunScreen() {
     setIsFollowMode(true);
     nextWaypointIndexRef.current = 0;
     setNextWaypointIndex(0);
+    finishCoordRef.current = routeMode === 'loop' ? location : destination;
+    hasAutoFinishedRef.current = false;
     setIsRunning(true);
   }
 
