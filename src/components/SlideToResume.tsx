@@ -17,6 +17,7 @@ export function SlideToResume({ onResume }: Props) {
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
+      onPanResponderTerminationRequest: () => false,
       onPanResponderMove: (_, gs) => {
         if (completed.current) return;
         const clamped = Math.max(0, Math.min(gs.dx, MAX_SLIDE));
