@@ -5,7 +5,7 @@ import { useRef } from "react";
 
 export function FounderStory() {
   const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: "-80px" });
+  const inView = useInView(ref, { once: true, margin: "0px" });
 
   return (
     <section ref={ref} className="py-32 px-6 bg-[#0d0d0d]">

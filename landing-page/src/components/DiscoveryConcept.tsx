@@ -5,7 +5,7 @@ import { useRef } from "react";
 
 export function DiscoveryConcept() {
   const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: "-100px" });
+  const inView = useInView(ref, { once: true, margin: "0px" });
 
   return (
     <section ref={ref} className="py-32 px-6 bg-[#0a0a0a]">
