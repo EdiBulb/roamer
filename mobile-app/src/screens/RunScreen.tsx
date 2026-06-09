@@ -16,6 +16,7 @@ import { DEMO_MODE } from '../constants';
 import { Coordinate, Difficulty, RouteMode, TargetDistance } from '../types';
 import { ModePicker } from '../components/ModePicker';
 import { DifficultyPicker } from '../components/DifficultyPicker';
+import { useTutorial } from '../contexts/TutorialContext';
 
 function segmentKm(a: Coordinate, b: Coordinate): number {
   const R = 6371;
@@ -37,6 +38,7 @@ function calcBearing(a: Coordinate, b: Coordinate): number {
 }
 
 export function RunScreen() {
+  const { advance, isActive } = useTutorial();
   const { location, loading: locationLoading, error: locationError } = useLocation();
   const [selectedDistance, setSelectedDistance] = useState<TargetDistance>(5);
   const [routeMode, setRouteMode] = useState<RouteMode>('loop');
@@ -379,7 +381,7 @@ export function RunScreen() {
           <ModePicker selected={routeMode} onSelect={(m) => { setRouteMode(m); setDestination(null); clearRoute(); }} />
 
           {routeMode === 'loop' ? (
-            <DistancePicker selected={selectedDistance} onSelect={(d) => setSelectedDistance(d)} />
+            <DistancePicker selected={selectedDistance} onSelect={(d) => { setSelectedDistance(d); if (isActive) advance(1); }} />
           ) : (
             destination && (
               <DifficultyPicker selected={difficulty} onSelect={setDifficulty} />
@@ -394,7 +396,7 @@ export function RunScreen() {
 
           {status === 'success' ? (
             <>
-              <TouchableOpacity style={styles.startRunButton} onPress={handleStartRun} activeOpacity={0.8}>
+              <TouchableOpacity style={styles.startRunButton} onPress={() => { handleStartRun(); if (isActive) advance(3); }} activeOpacity={0.8}>
                 <Text style={styles.startRunButtonText}>▶  Start Run</Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -411,7 +413,7 @@ export function RunScreen() {
           ) : (
             <TouchableOpacity
               style={[styles.generateButton, isGenerating && styles.generateButtonDisabled]}
-              onPress={generate}
+              onPress={() => { generate(); if (isActive) advance(2); }}
               disabled={isGenerating || !location}
               activeOpacity={0.8}
             >

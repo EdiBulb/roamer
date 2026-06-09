@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { HomeScreen } from '../screens/HomeScreen';
 import { RunScreen } from '../screens/RunScreen';
 import { CalendarScreen } from '../screens/CalendarScreen';
+import { useTutorial } from '../contexts/TutorialContext';
 
 const Tab = createBottomTabNavigator();
 
@@ -25,9 +26,16 @@ const icons = {
 
 export function AppNavigator() {
   const insets = useSafeAreaInsets();
+  const { advance, isActive } = useTutorial();
 
   return (
     <Tab.Navigator
+      screenListeners={isActive ? {
+        tabPress: (e) => {
+          const name = (e.target ?? '').split('-')[0];
+          if (name === 'Run') advance(0);
+        },
+      } : undefined}
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
