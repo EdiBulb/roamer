@@ -26,6 +26,19 @@ export async function POST(req: Request) {
       },
     });
 
+    const webhookUrl = process.env.SLACK_WAITLIST_WEBHOOK;
+    console.log("[Slack] webhookUrl exists:", !!webhookUrl);
+    if (webhookUrl) {
+      const slackRes = await fetch(webhookUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: `🎉 New Waitlist Signup\n*Name:* ${name?.trim() || "Anonymous"}\n*Email:* ${email.trim().toLowerCase()}`,
+        }),
+      });
+      console.log("[Slack] response status:", slackRes.status);
+    }
+
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error("Notion API error:", err);
