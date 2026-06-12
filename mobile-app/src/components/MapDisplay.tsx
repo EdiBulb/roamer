@@ -44,14 +44,13 @@ function sampleArrows(
   return result;
 }
 
-function toLineGeoJSON(coords: Coordinate[]): GeoJSON.Feature<GeoJSON.LineString> | null {
-  if (coords.length < 2) return null;
+function toLineGeoJSON(coords: Coordinate[]): GeoJSON.Feature<GeoJSON.LineString> {
   return {
     type: 'Feature',
     properties: {},
     geometry: {
       type: 'LineString',
-      coordinates: coords.map((c) => [c.longitude, c.latitude]),
+      coordinates: coords.length >= 2 ? coords.map((c) => [c.longitude, c.latitude]) : [],
     },
   };
 }
@@ -238,40 +237,33 @@ export function MapDisplay({
         )}
 
         {/* ── route: dynamic segments (running) ── */}
+        {/* Render order: rest → next → completed → current (last = on top) */}
         {segments && (
           <>
-            {toLineGeoJSON(segments.completed) && (
-              <MapboxGL.ShapeSource id="seg-completed" shape={toLineGeoJSON(segments.completed)!}>
-                <MapboxGL.LineLayer
-                  id="seg-completed-line"
-                  style={{ lineColor: '#9E9E9E', lineWidth: 4, lineJoin: 'round', lineCap: 'round' }}
-                />
-              </MapboxGL.ShapeSource>
-            )}
-            {toLineGeoJSON(segments.current) && (
-              <MapboxGL.ShapeSource id="seg-current" shape={toLineGeoJSON(segments.current)!}>
-                <MapboxGL.LineLayer
-                  id="seg-current-line"
-                  style={{ lineColor: '#4CAF50', lineWidth: 4, lineJoin: 'round', lineCap: 'round' }}
-                />
-              </MapboxGL.ShapeSource>
-            )}
-            {toLineGeoJSON(segments.next) && (
-              <MapboxGL.ShapeSource id="seg-next" shape={toLineGeoJSON(segments.next)!}>
-                <MapboxGL.LineLayer
-                  id="seg-next-line"
-                  style={{ lineColor: '#A5D6A7', lineWidth: 4, lineJoin: 'round', lineCap: 'round' }}
-                />
-              </MapboxGL.ShapeSource>
-            )}
-            {toLineGeoJSON(segments.rest) && (
-              <MapboxGL.ShapeSource id="seg-rest" shape={toLineGeoJSON(segments.rest)!}>
-                <MapboxGL.LineLayer
-                  id="seg-rest-line"
-                  style={{ lineColor: '#E8F5E9', lineWidth: 4, lineJoin: 'round', lineCap: 'round' }}
-                />
-              </MapboxGL.ShapeSource>
-            )}
+            <MapboxGL.ShapeSource id="seg-rest" shape={toLineGeoJSON(segments.rest)}>
+              <MapboxGL.LineLayer
+                id="seg-rest-line"
+                style={{ lineColor: '#E8F5E9', lineWidth: 4, lineJoin: 'round', lineCap: 'round' }}
+              />
+            </MapboxGL.ShapeSource>
+            <MapboxGL.ShapeSource id="seg-next" shape={toLineGeoJSON(segments.next)}>
+              <MapboxGL.LineLayer
+                id="seg-next-line"
+                style={{ lineColor: '#A5D6A7', lineWidth: 4, lineJoin: 'round', lineCap: 'round' }}
+              />
+            </MapboxGL.ShapeSource>
+            <MapboxGL.ShapeSource id="seg-completed" shape={toLineGeoJSON(segments.completed)}>
+              <MapboxGL.LineLayer
+                id="seg-completed-line"
+                style={{ lineColor: '#9E9E9E', lineWidth: 4, lineJoin: 'round', lineCap: 'round' }}
+              />
+            </MapboxGL.ShapeSource>
+            <MapboxGL.ShapeSource id="seg-current" shape={toLineGeoJSON(segments.current)}>
+              <MapboxGL.LineLayer
+                id="seg-current-line"
+                style={{ lineColor: '#4CAF50', lineWidth: 4, lineJoin: 'round', lineCap: 'round' }}
+              />
+            </MapboxGL.ShapeSource>
           </>
         )}
 
