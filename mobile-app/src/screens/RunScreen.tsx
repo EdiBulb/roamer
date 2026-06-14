@@ -180,12 +180,11 @@ export function RunScreen() {
     if (!isRunning || DEMO_MODE || !route) return;
 
     const steps = route.steps ?? [];
-    const ANNOUNCE_BEFORE_M = 100;
-    const MIN_GAP_M = 80;
+    const ANNOUNCE_BEFORE_M = 50;
 
     let prevCoord: Coordinate | null = null;
     let localCoveredM = 0;
-    let stepIdx = 0;
+    const announcedSteps = new Set<number>();
     let cancelled = false;
     let sub: Location.LocationSubscription | null = null;
 
@@ -234,15 +233,19 @@ export function RunScreen() {
           localCoveredM += segM;
           setCoveredKm(localCoveredM / 1000);
           setBearing(calcBearing(prevCoord, coord));
+        }
 
-          if (stepIdx < steps.length && localCoveredM >= steps[stepIdx].distanceFromStartM - ANNOUNCE_BEFORE_M) {
-            Speech.speak(steps[stepIdx].instruction, { language: 'en' });
-            setCurrentInstruction(steps[stepIdx].instruction);
-            const announcedAt = steps[stepIdx].distanceFromStartM;
-            stepIdx += 1;
-            while (stepIdx < steps.length && steps[stepIdx].distanceFromStartM - announcedAt < MIN_GAP_M) {
-              stepIdx += 1;
-            }
+        // 현재 위치 기반: step 꺾이는 지점까지 직선거리로 안내 타이밍 결정
+        for (let i = 0; i < steps.length; i++) {
+          if (announcedSteps.has(i)) continue;
+          const turnPoint = steps[i].coordinates?.[0];
+          if (!turnPoint) continue;
+          const distToTurn = segmentKm(coord, turnPoint) * 1000;
+          if (distToTurn < ANNOUNCE_BEFORE_M) {
+            Speech.speak(steps[i].instruction, { language: 'en' });
+            setCurrentInstruction(steps[i].instruction);
+            announcedSteps.add(i);
+            break;
           }
         }
 
