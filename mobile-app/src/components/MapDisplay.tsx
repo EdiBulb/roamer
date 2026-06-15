@@ -87,6 +87,7 @@ export function MapDisplay({
   const center: [number, number] = [location.longitude, location.latitude];
   const cameraRef = useRef<MapboxGL.Camera>(null);
   const mapRef = useRef<MapboxGL.MapView>(null);
+  const boundsOriginRef = useRef<Coordinate>(location);
 
   const [compassHeading, setCompassHeading] = useState(0);
   const [mapHeading, setMapHeading] = useState(0);
@@ -112,6 +113,7 @@ export function MapDisplay({
     return () => loop.stop();
   }, []);
 
+  // Running: follow user with tilt
   useEffect(() => {
     if (!isRunning || !isFollowMode) return;
     cameraRef.current?.setCamera({
@@ -123,6 +125,21 @@ export function MapDisplay({
       animationMode: 'easeTo',
     });
   }, [location, bearing, isFollowMode, isRunning]);
+
+  // Route generated: fit all coordinates
+  useEffect(() => {
+    if (isRunning || !route) return;
+    const { ne, sw } = getBoundingBox(route.coordinates);
+    cameraRef.current?.fitBounds(ne, sw, [100, 40, 100, 40], 1000);
+  }, [route, isRunning]);
+
+  // Destination set: fit origin + destination (one-shot, not affected by GPS drift)
+  useEffect(() => {
+    if (isRunning || route || !destination) return;
+    boundsOriginRef.current = location;
+    const { ne, sw } = getBoundingBox([location, destination]);
+    cameraRef.current?.fitBounds(ne, sw, [80, 60, 80, 60], 800);
+  }, [destination]);
 
   useEffect(() => {
     Magnetometer.setUpdateInterval(100);
@@ -201,29 +218,13 @@ export function MapDisplay({
           recalcArrowPos();
         }}
       >
-        {/* ── camera ── */}
-        {isRunning ? (
-          <MapboxGL.Camera ref={cameraRef} />
-        ) : route ? (
-          <MapboxGL.Camera
-            bounds={{
-              ...getBoundingBox(route.coordinates),
-              paddingTop: 100,
-              paddingBottom: 100,
-              paddingLeft: 40,
-              paddingRight: 40,
-            }}
-            animationMode="flyTo"
-            animationDuration={1000}
-          />
-        ) : (
-          <MapboxGL.Camera
-            zoomLevel={DEFAULT_ZOOM}
-            centerCoordinate={center}
-            animationMode="flyTo"
-            animationDuration={1000}
-          />
-        )}
+        {/* ── camera (single ref — all positioning is imperative via useEffects) ── */}
+        <MapboxGL.Camera
+          ref={cameraRef}
+          zoomLevel={DEFAULT_ZOOM}
+          centerCoordinate={center}
+          animationMode="none"
+        />
 
 
         {/* ── destination pin ── */}

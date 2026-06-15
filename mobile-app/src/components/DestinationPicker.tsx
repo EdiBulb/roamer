@@ -31,8 +31,23 @@ export function DestinationPicker({ userLocation, onSelect }: Props) {
   const [searching, setSearching] = useState(false);
   const [savingFor, setSavingFor] = useState<{ coord: Coordinate; label: string } | null>(null);
   const [saveInput, setSaveInput] = useState('');
+  const [countryCode, setCountryCode] = useState<string | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { places, add, remove } = useSavedPlaces();
+
+  // Reverse geocode once to get user's country code for search restriction
+  useEffect(() => {
+    async function fetchCountry() {
+      try {
+        const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${userLocation.longitude},${userLocation.latitude}.json?types=country&access_token=${MAPBOX_TOKEN}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        const code: string | undefined = data.features?.[0]?.properties?.short_code;
+        if (code) setCountryCode(code);
+      } catch {}
+    }
+    fetchCountry();
+  }, []);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -43,7 +58,8 @@ export function DestinationPicker({ userLocation, onSelect }: Props) {
       setSearching(true);
       try {
         const proximity = `${userLocation.longitude},${userLocation.latitude}`;
-        const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(trimmed)}.json?proximity=${proximity}&types=place,address,poi&limit=5&access_token=${MAPBOX_TOKEN}`;
+        const countryParam = countryCode ? `&country=${countryCode}` : '';
+        const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(trimmed)}.json?proximity=${proximity}&types=place,address,poi&limit=5${countryParam}&access_token=${MAPBOX_TOKEN}`;
         const res = await fetch(url);
         const data = await res.json();
         setResults(data.features ?? []);
@@ -55,7 +71,7 @@ export function DestinationPicker({ userLocation, onSelect }: Props) {
     }, 350);
 
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [query, userLocation]);
+  }, [query, userLocation, countryCode]);
 
   function handleSelect(coord: Coordinate, label: string) {
     Keyboard.dismiss();

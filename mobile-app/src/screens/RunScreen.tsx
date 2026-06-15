@@ -1,4 +1,4 @@
-import { Animated, PanResponder, ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, KeyboardAvoidingView, Platform, PanResponder, ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
 
@@ -325,7 +325,10 @@ export function RunScreen() {
   const displayLocation = simulatedLocation ?? location;
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
       <StatusBar style="dark" />
 
       <View style={styles.mapArea}>
@@ -443,7 +446,7 @@ export function RunScreen() {
           )}
         </View>
       ))}
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
