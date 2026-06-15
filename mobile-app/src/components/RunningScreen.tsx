@@ -2,11 +2,14 @@ import { useState } from 'react';
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SlideToResume } from './SlideToResume';
 
+import { Units } from '../hooks/useSettings';
+
 interface Props {
   coveredKm: number;
   elapsedSeconds: number;
   totalKm: number;
   isPaused: boolean;
+  units: Units;
   onPause: () => void;
   onResume: () => void;
   onFinish: () => void;
@@ -18,16 +21,22 @@ function formatTime(seconds: number): string {
   return `${m}:${s}`;
 }
 
-function formatPace(distKm: number, seconds: number): string {
+function formatDist(km: number, units: Units): string {
+  return units === 'miles' ? (km * 0.621371).toFixed(2) : km.toFixed(2);
+}
+
+function formatPace(distKm: number, seconds: number, units: Units): string {
   if (distKm < 0.01) return '--:--';
-  const paceSeconds = seconds / distKm;
+  const dist = units === 'miles' ? distKm * 0.621371 : distKm;
+  const paceSeconds = seconds / dist;
   const m = Math.floor(paceSeconds / 60).toString().padStart(2, '0');
   const s = Math.floor(paceSeconds % 60).toString().padStart(2, '0');
   return `${m}:${s}`;
 }
 
-export function RunningScreen({ coveredKm, elapsedSeconds, totalKm, isPaused, onPause, onResume, onFinish }: Props) {
+export function RunningScreen({ coveredKm, elapsedSeconds, totalKm, isPaused, units, onPause, onResume, onFinish }: Props) {
   const remainingKm = Math.max(0, totalKm - coveredKm);
+  const unitLabel = units === 'miles' ? 'mi' : 'km';
   const [showFinishModal, setShowFinishModal] = useState(false);
 
   return (
@@ -47,8 +56,8 @@ export function RunningScreen({ coveredKm, elapsedSeconds, totalKm, isPaused, on
       <View style={styles.statsGrid}>
         <View style={styles.statsRow}>
           <View style={styles.stat}>
-            <Text style={styles.statValue}>{coveredKm.toFixed(2)}</Text>
-            <Text style={styles.statLabel}>km covered</Text>
+            <Text style={styles.statValue}>{formatDist(coveredKm, units)}</Text>
+            <Text style={styles.statLabel}>{unitLabel} covered</Text>
           </View>
           <View style={styles.statVerticalDivider} />
           <View style={styles.stat}>
@@ -59,13 +68,13 @@ export function RunningScreen({ coveredKm, elapsedSeconds, totalKm, isPaused, on
         <View style={styles.statHorizontalDivider} />
         <View style={styles.statsRow}>
           <View style={styles.stat}>
-            <Text style={styles.statValue}>{formatPace(coveredKm, elapsedSeconds)}</Text>
-            <Text style={styles.statLabel}>min/km</Text>
+            <Text style={styles.statValue}>{formatPace(coveredKm, elapsedSeconds, units)}</Text>
+            <Text style={styles.statLabel}>min/{unitLabel}</Text>
           </View>
           <View style={styles.statVerticalDivider} />
           <View style={styles.stat}>
-            <Text style={styles.statValue}>{remainingKm.toFixed(2)}</Text>
-            <Text style={styles.statLabel}>km left</Text>
+            <Text style={styles.statValue}>{formatDist(remainingKm, units)}</Text>
+            <Text style={styles.statLabel}>{unitLabel} left</Text>
           </View>
         </View>
       </View>

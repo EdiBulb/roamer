@@ -1,16 +1,23 @@
 import { StyleSheet, Text, View } from 'react-native';
+import { Units } from '../hooks/useSettings';
 import { RouteStatus, TargetDistance } from '../types';
 
 interface Props {
   status: RouteStatus;
   distanceKm: number | null;
   targetKm: TargetDistance;
+  units: Units;
 }
 
-export function RouteInfo({ status, distanceKm, targetKm }: Props) {
+export function RouteInfo({ status, distanceKm, targetKm, units }: Props) {
+  const unitLabel = units === 'miles' ? 'mi' : 'km';
+  const targetDisplay = units === 'miles'
+    ? (targetKm * 0.621371).toFixed(1)
+    : String(targetKm);
+
   if (status === 'idle') {
     return (
-      <Text style={styles.hint}>Tap the button to generate a {targetKm}km route</Text>
+      <Text style={styles.hint}>Tap the button to generate a {targetDisplay}{unitLabel} route</Text>
     );
   }
 
@@ -23,10 +30,13 @@ export function RouteInfo({ status, distanceKm, targetKm }: Props) {
   }
 
   if (status === 'success' && distanceKm !== null) {
+    const displayDist = units === 'miles'
+      ? (distanceKm * 0.621371).toFixed(1)
+      : String(distanceKm);
     return (
       <View style={styles.badge}>
         <Text style={styles.badgeText}>Estimated Distance</Text>
-        <Text style={styles.distance}>{distanceKm} km</Text>
+        <Text style={styles.distance}>{displayDist} {unitLabel}</Text>
       </View>
     );
   }

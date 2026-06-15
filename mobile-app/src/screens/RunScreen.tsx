@@ -18,6 +18,7 @@ import { Coordinate, Difficulty, RouteMode, TargetDistance } from '../types';
 import { ModePicker } from '../components/ModePicker';
 import { DifficultyPicker } from '../components/DifficultyPicker';
 import { DestinationPicker } from '../components/DestinationPicker';
+import { useSettings } from '../hooks/useSettings';
 import { useTutorial } from '../contexts/TutorialContext';
 
 function segmentKm(a: Coordinate, b: Coordinate): number {
@@ -41,6 +42,9 @@ function calcBearing(a: Coordinate, b: Coordinate): number {
 
 export function RunScreen() {
   const { advance, isActive } = useTutorial();
+  const { settings } = useSettings();
+  const settingsRef = useRef(settings);
+  useEffect(() => { settingsRef.current = settings; }, [settings]);
   const { location, loading: locationLoading, error: locationError } = useLocation();
   const [selectedDistance, setSelectedDistance] = useState<TargetDistance>(5);
   const [routeMode, setRouteMode] = useState<RouteMode>('loop');
@@ -215,8 +219,9 @@ export function RunScreen() {
     if (!isRunning || DEMO_MODE || !route) return;
 
     const steps = route.steps ?? [];
-    const ANNOUNCE_BEFORE_M = 50;
+    const ANNOUNCE_BEFORE_M = settingsRef.current.announceDistanceM;
     const OFF_ROUTE_M = 30;
+    let lastAnnouncedKmMilestone = 0;
     const OFF_ROUTE_DEBOUNCE_MS = 10_000;
     const ON_ROUTE_DEBOUNCE_MS = 5_000;
     const VOICE_COOLDOWN_MS = 60_000;
@@ -227,7 +232,9 @@ export function RunScreen() {
     let cancelled = false;
     let sub: Location.LocationSubscription | null = null;
 
-    Speech.speak('Starting your run. Good luck!', { language: 'en' });
+    if (settingsRef.current.voiceEnabled) {
+      Speech.speak('Starting your run. Good luck!', { language: 'en' });
+    }
 
     Location.watchPositionAsync(
       {
@@ -251,11 +258,14 @@ export function RunScreen() {
           const total = route.waypoints.length;
           nextWaypointIndexRef.current += 1;
           setNextWaypointIndex(nextWaypointIndexRef.current);
-          Speech.stop();
-          const msg = arrivedAt === total
-            ? `Checkpoint ${arrivedAt} reached. Heading to the finish!`
-            : `Checkpoint ${arrivedAt} reached. Heading to checkpoint ${arrivedAt + 1}.`;
-          Speech.speak(msg, { language: 'en' });
+          const s = settingsRef.current;
+          if (s.voiceEnabled && s.voiceFrequency !== 'minimal') {
+            Speech.stop();
+            const msg = arrivedAt === total
+              ? `Checkpoint ${arrivedAt} reached. Heading to the finish!`
+              : `Checkpoint ${arrivedAt} reached. Heading to checkpoint ${arrivedAt + 1}.`;
+            Speech.speak(msg, { language: 'en' });
+          }
         }
 
         const finishCoord = finishCoordRef.current;
@@ -281,17 +291,27 @@ export function RunScreen() {
           setBearing(calcBearing(prevCoord, coord));
         }
 
-        // 현재 위치 기반: step 꺾이는 지점까지 직선거리로 안내 타이밍 결정
-        for (let i = 0; i < steps.length; i++) {
-          if (announcedSteps.has(i)) continue;
-          const turnPoint = steps[i].coordinates?.[0];
-          if (!turnPoint) continue;
-          const distToTurn = segmentKm(coord, turnPoint) * 1000;
-          if (distToTurn < ANNOUNCE_BEFORE_M) {
-            Speech.speak(steps[i].instruction, { language: 'en' });
-            setCurrentInstruction(steps[i].instruction);
-            announcedSteps.add(i);
-            break;
+        // turn instructions
+        if (settingsRef.current.voiceEnabled) {
+          for (let i = 0; i < steps.length; i++) {
+            if (announcedSteps.has(i)) continue;
+            const turnPoint = steps[i].coordinates?.[0];
+            if (!turnPoint) continue;
+            const distToTurn = segmentKm(coord, turnPoint) * 1000;
+            if (distToTurn < ANNOUNCE_BEFORE_M) {
+              Speech.speak(steps[i].instruction, { language: 'en' });
+              setCurrentInstruction(steps[i].instruction);
+              announcedSteps.add(i);
+              break;
+            }
+          }
+          // chatty: km milestone
+          if (settingsRef.current.voiceFrequency === 'chatty') {
+            const kmMilestone = Math.floor(localCoveredM / 1000);
+            if (kmMilestone > lastAnnouncedKmMilestone && kmMilestone > 0) {
+              Speech.speak(`You've run ${kmMilestone} kilometer${kmMilestone > 1 ? 's' : ''}!`, { language: 'en' });
+              lastAnnouncedKmMilestone = kmMilestone;
+            }
           }
         }
 
@@ -310,7 +330,8 @@ export function RunScreen() {
                 setIsOffRoute(true);
                 isOffRouteRef.current = true;
                 const now = Date.now();
-                if (now - lastDeviationVoiceRef.current > VOICE_COOLDOWN_MS) {
+                const sv = settingsRef.current;
+                if (sv.voiceEnabled && sv.voiceFrequency !== 'minimal' && now - lastDeviationVoiceRef.current > VOICE_COOLDOWN_MS) {
                   Speech.speak("You've left the route.", { language: 'en' });
                   lastDeviationVoiceRef.current = now;
                 }
@@ -323,7 +344,9 @@ export function RunScreen() {
               onRouteTimerRef.current = setTimeout(() => {
                 setIsOffRoute(false);
                 isOffRouteRef.current = false;
-                Speech.speak('Back on track.', { language: 'en' });
+                if (settingsRef.current.voiceEnabled && settingsRef.current.voiceFrequency !== 'minimal') {
+                  Speech.speak('Back on track.', { language: 'en' });
+                }
                 onRouteTimerRef.current = null;
               }, ON_ROUTE_DEBOUNCE_MS);
             }
@@ -452,7 +475,7 @@ export function RunScreen() {
             isMyWayMode={isMyWayMode}
           />
         )}
-        {isRunning && isOffRoute && (
+{isRunning && isOffRoute && (
           <View style={styles.offRouteBanner}>
             <Text style={styles.offRouteBannerText}>Off route</Text>
             <TouchableOpacity style={styles.myWayBtn} onPress={handleMyWay} activeOpacity={0.8}>
@@ -483,6 +506,7 @@ export function RunScreen() {
             elapsedSeconds={elapsedSeconds}
             totalKm={route?.distanceKm ?? 0}
             isPaused={isPaused}
+            units={settings.units}
             onPause={handlePause}
             onResume={handleResume}
             onFinish={handleFinishRun}
@@ -490,7 +514,7 @@ export function RunScreen() {
         </Animated.View>
       )}
 
-      {!isRunning && (
+{!isRunning && (
         <Animated.View
           style={[styles.card, { transform: [{ translateY: cardSlideY }] }]}
           onLayout={(e) => { cardNaturalHeightRef.current = e.nativeEvent.layout.height; }}
@@ -526,6 +550,7 @@ export function RunScreen() {
             status={status}
             distanceKm={route?.distanceKm ?? null}
             targetKm={selectedDistance}
+            units={settings.units}
           />
 
           {status === 'success' ? (

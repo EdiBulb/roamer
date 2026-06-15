@@ -1,10 +1,12 @@
-import { useCallback, useState } from 'react';
-import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useCallback, useRef, useState } from 'react';
+import { Animated, Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRunHistory } from '../hooks/useRunHistory';
 import { getTotalExploredCount } from '../services/streetTracker';
 import { BADGES } from '../services/badges';
+import { SettingsModal } from '../components/SettingsModal';
+import { useSettings } from '../hooks/useSettings';
 
 function formatTotalTime(seconds: number): string {
   const h = Math.floor(seconds / 3600);
@@ -15,7 +17,17 @@ function formatTotalTime(seconds: number): string {
 
 export function CalendarScreen() {
   const { history, refresh } = useRunHistory();
+  const { settings, update: updateSettings } = useSettings();
   const [badgeModalVisible, setBadgeModalVisible] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const gearScale = useRef(new Animated.Value(1)).current;
+
+  function onGearPressIn() {
+    Animated.spring(gearScale, { toValue: 0.82, useNativeDriver: true, speed: 50, bounciness: 4 }).start();
+  }
+  function onGearPressOut() {
+    Animated.spring(gearScale, { toValue: 1, useNativeDriver: true, speed: 20, bounciness: 8 }).start();
+  }
   const [totalStreets, setTotalStreets] = useState(0);
 
   useFocusEffect(useCallback(() => {
@@ -48,9 +60,29 @@ export function CalendarScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.header}>
-        <Text style={styles.title}>Trail</Text>
+        <View style={styles.headerTop}>
+          <Text style={styles.title}>Trail</Text>
+          <Pressable
+            style={styles.gearBtn}
+            onPress={() => setShowSettings(true)}
+            onPressIn={onGearPressIn}
+            onPressOut={onGearPressOut}
+          >
+            <Animated.Image
+              source={require('../../assets/icons/icon-settings.png')}
+              style={[styles.gearBtnIcon, { transform: [{ scale: gearScale }] }]}
+            />
+          </Pressable>
+        </View>
         <Text style={styles.subtitle}>Your running habit</Text>
       </View>
+
+      <SettingsModal
+        visible={showSettings}
+        settings={settings}
+        onUpdate={updateSettings}
+        onClose={() => setShowSettings(false)}
+      />
 
       {/* This month stats */}
       <View style={styles.section}>
@@ -160,6 +192,16 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
   },
+  headerTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  gearBtn: {
+    marginRight: -18,
+  },
+  gearBtnText: { fontSize: 20 },
+  gearBtnIcon: { width: 66, height: 66, resizeMode: 'contain' },
   title: { fontSize: 28, fontWeight: '800', color: '#1A1A1A' },
   subtitle: { fontSize: 14, color: '#BDBDBD', marginTop: 4 },
   section: {
