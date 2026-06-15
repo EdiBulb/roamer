@@ -51,10 +51,17 @@ export function RunScreen() {
   const [isPaused, setIsPaused] = useState(false);
   const [isFollowMode, setIsFollowMode] = useState(true);
   const [nextWaypointIndex, setNextWaypointIndex] = useState(0);
+  const [isOffRoute, setIsOffRoute] = useState(false);
+  const [isMyWayMode, setIsMyWayMode] = useState(false);
   const nextWaypointIndexRef = useRef(0);
   const finishCoordRef = useRef<Coordinate | null>(null);
   const hasAutoFinishedRef = useRef(false);
   const isPausedRef = useRef(false);
+  const isOffRouteRef = useRef(false);
+  const isMyWayModeRef = useRef(false);
+  const offRouteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const onRouteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastDeviationVoiceRef = useRef<number>(0);
   const [coveredKm, setCoveredKm] = useState(0);
   const panelNaturalHeightRef = useRef(0);
   const slideY = useRef(new Animated.Value(0)).current;
@@ -182,6 +189,10 @@ export function RunScreen() {
 
     const steps = route.steps ?? [];
     const ANNOUNCE_BEFORE_M = 50;
+    const OFF_ROUTE_M = 30;
+    const OFF_ROUTE_DEBOUNCE_MS = 10_000;
+    const ON_ROUTE_DEBOUNCE_MS = 5_000;
+    const VOICE_COOLDOWN_MS = 60_000;
 
     let prevCoord: Coordinate | null = null;
     let localCoveredM = 0;
@@ -257,6 +268,41 @@ export function RunScreen() {
           }
         }
 
+        // ── deviation detection ──────────────────────────────────────────────
+        if (!isMyWayModeRef.current) {
+          let minDistM = Infinity;
+          for (const c of route.coordinates) {
+            const d = segmentKm(coord, c) * 1000;
+            if (d < minDistM) minDistM = d;
+          }
+
+          if (minDistM > OFF_ROUTE_M) {
+            if (onRouteTimerRef.current) { clearTimeout(onRouteTimerRef.current); onRouteTimerRef.current = null; }
+            if (!offRouteTimerRef.current && !isOffRouteRef.current) {
+              offRouteTimerRef.current = setTimeout(() => {
+                setIsOffRoute(true);
+                isOffRouteRef.current = true;
+                const now = Date.now();
+                if (now - lastDeviationVoiceRef.current > VOICE_COOLDOWN_MS) {
+                  Speech.speak("You've left the route.", { language: 'en' });
+                  lastDeviationVoiceRef.current = now;
+                }
+                offRouteTimerRef.current = null;
+              }, OFF_ROUTE_DEBOUNCE_MS);
+            }
+          } else {
+            if (offRouteTimerRef.current) { clearTimeout(offRouteTimerRef.current); offRouteTimerRef.current = null; }
+            if (isOffRouteRef.current && !onRouteTimerRef.current) {
+              onRouteTimerRef.current = setTimeout(() => {
+                setIsOffRoute(false);
+                isOffRouteRef.current = false;
+                Speech.speak('Back on track.', { language: 'en' });
+                onRouteTimerRef.current = null;
+              }, ON_ROUTE_DEBOUNCE_MS);
+            }
+          }
+        }
+
         prevCoord = coord;
       }
     ).then((s) => {
@@ -268,6 +314,8 @@ export function RunScreen() {
       cancelled = true;
       sub?.remove();
       Speech.stop();
+      if (offRouteTimerRef.current) { clearTimeout(offRouteTimerRef.current); offRouteTimerRef.current = null; }
+      if (onRouteTimerRef.current) { clearTimeout(onRouteTimerRef.current); onRouteTimerRef.current = null; }
     };
   }, [isRunning, route]);
 
@@ -283,6 +331,10 @@ export function RunScreen() {
     setNextWaypointIndex(0);
     finishCoordRef.current = routeMode === 'loop' ? location : destination;
     hasAutoFinishedRef.current = false;
+    setIsOffRoute(false);
+    setIsMyWayMode(false);
+    isOffRouteRef.current = false;
+    isMyWayModeRef.current = false;
     setIsRunning(true);
   }
 
@@ -293,6 +345,15 @@ export function RunScreen() {
 
   function handleResume() {
     setIsPaused(false);
+  }
+
+  function handleMyWay() {
+    setIsOffRoute(false);
+    setIsMyWayMode(true);
+    isOffRouteRef.current = false;
+    isMyWayModeRef.current = true;
+    if (offRouteTimerRef.current) { clearTimeout(offRouteTimerRef.current); offRouteTimerRef.current = null; }
+    if (onRouteTimerRef.current) { clearTimeout(onRouteTimerRef.current); onRouteTimerRef.current = null; }
   }
 
   function handleFinishRun() {
@@ -309,6 +370,10 @@ export function RunScreen() {
     setElapsedSeconds(0);
     setCurrentInstruction(null);
     setBearing(0);
+    setIsOffRoute(false);
+    setIsMyWayMode(false);
+    isOffRouteRef.current = false;
+    isMyWayModeRef.current = false;
   }
 
   if (isFinished && route) {
@@ -356,9 +421,23 @@ export function RunScreen() {
             onUserDrag={() => setIsFollowMode(false)}
             onFollowResume={() => setIsFollowMode(true)}
             nextWaypointIndex={nextWaypointIndex}
+            isMyWayMode={isMyWayMode}
           />
         )}
-        {isRunning && currentInstruction && (
+        {isRunning && isOffRoute && (
+          <View style={styles.offRouteBanner}>
+            <Text style={styles.offRouteBannerText}>Off route</Text>
+            <TouchableOpacity style={styles.myWayBtn} onPress={handleMyWay} activeOpacity={0.8}>
+              <Text style={styles.myWayBtnText}>My Way</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+        {isRunning && isMyWayMode && (
+          <View style={styles.myWayBadge}>
+            <Text style={styles.myWayBadgeText}>My Way 🏃</Text>
+          </View>
+        )}
+        {isRunning && currentInstruction && !isOffRoute && !isMyWayMode && (
           <View style={styles.instructionOverlay}>
             <Text style={styles.instructionOverlayText}>{currentInstruction}</Text>
           </View>
@@ -474,6 +553,57 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 6,
+  },
+  offRouteBanner: {
+    position: 'absolute',
+    top: 16,
+    left: 16,
+    right: 16,
+    backgroundColor: '#E53935',
+    borderRadius: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    zIndex: 10,
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+  },
+  offRouteBannerText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  myWayBtn: {
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    borderRadius: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+  },
+  myWayBtnText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  myWayBadge: {
+    position: 'absolute',
+    top: 16,
+    left: 16,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderRadius: 12,
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    zIndex: 10,
+    elevation: 10,
+  },
+  myWayBadgeText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '600',
   },
   instructionOverlayText: {
     color: '#fff',

@@ -69,6 +69,7 @@ interface Props {
   onUserDrag?: () => void;
   onFollowResume?: () => void;
   nextWaypointIndex?: number;
+  isMyWayMode?: boolean;
 }
 
 export function MapDisplay({
@@ -83,6 +84,7 @@ export function MapDisplay({
   onUserDrag,
   onFollowResume,
   nextWaypointIndex = 0,
+  isMyWayMode = false,
 }: Props) {
   const center: [number, number] = [location.longitude, location.latitude];
   const cameraRef = useRef<MapboxGL.Camera>(null);
@@ -256,25 +258,25 @@ export function MapDisplay({
             <MapboxGL.ShapeSource id="seg-rest" shape={toLineGeoJSON(segments.rest)}>
               <MapboxGL.LineLayer
                 id="seg-rest-line"
-                style={{ lineColor: '#E8F5E9', lineWidth: 4, lineJoin: 'round', lineCap: 'round' }}
+                style={{ lineColor: '#E8F5E9', lineWidth: 4, lineJoin: 'round', lineCap: 'round', lineOpacity: isMyWayMode ? 0.25 : 1 }}
               />
             </MapboxGL.ShapeSource>
             <MapboxGL.ShapeSource id="seg-next" shape={toLineGeoJSON(segments.next)}>
               <MapboxGL.LineLayer
                 id="seg-next-line"
-                style={{ lineColor: '#A5D6A7', lineWidth: 4, lineJoin: 'round', lineCap: 'round' }}
+                style={{ lineColor: '#A5D6A7', lineWidth: 4, lineJoin: 'round', lineCap: 'round', lineOpacity: isMyWayMode ? 0.25 : 1 }}
               />
             </MapboxGL.ShapeSource>
             <MapboxGL.ShapeSource id="seg-completed" shape={toLineGeoJSON(segments.completed)}>
               <MapboxGL.LineLayer
                 id="seg-completed-line"
-                style={{ lineColor: '#9E9E9E', lineWidth: 4, lineJoin: 'round', lineCap: 'round' }}
+                style={{ lineColor: '#9E9E9E', lineWidth: 4, lineJoin: 'round', lineCap: 'round', lineOpacity: isMyWayMode ? 0.25 : 1 }}
               />
             </MapboxGL.ShapeSource>
             <MapboxGL.ShapeSource id="seg-current" shape={toLineGeoJSON(segments.current)}>
               <MapboxGL.LineLayer
                 id="seg-current-line"
-                style={{ lineColor: '#4CAF50', lineWidth: 4, lineJoin: 'round', lineCap: 'round' }}
+                style={{ lineColor: '#4CAF50', lineWidth: 4, lineJoin: 'round', lineCap: 'round', lineOpacity: isMyWayMode ? 0.25 : 1 }}
               />
             </MapboxGL.ShapeSource>
           </>
