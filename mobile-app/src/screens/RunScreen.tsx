@@ -16,6 +16,7 @@ import { DEMO_MODE } from '../constants';
 import { Coordinate, Difficulty, RouteMode, TargetDistance } from '../types';
 import { ModePicker } from '../components/ModePicker';
 import { DifficultyPicker } from '../components/DifficultyPicker';
+import { DestinationPicker } from '../components/DestinationPicker';
 import { useTutorial } from '../contexts/TutorialContext';
 
 function segmentKm(a: Coordinate, b: Coordinate): number {
@@ -380,9 +381,15 @@ export function RunScreen() {
       )}
 
       {!isRunning && (routeMode === 'destination' && !destination ? (
-        <View style={styles.cardMinimal}>
+        <View style={styles.card}>
           <Text style={styles.appTitle}>Roamer</Text>
           <ModePicker selected={routeMode} onSelect={(m) => { setRouteMode(m); setDestination(null); clearRoute(); }} />
+          {location && (
+            <DestinationPicker
+              userLocation={location}
+              onSelect={(coord) => setDestination(coord)}
+            />
+          )}
         </View>
       ) : (
         <View style={styles.card}>
@@ -523,19 +530,5 @@ const styles = StyleSheet.create({
   },
   generateButtonDisabled: { backgroundColor: '#A5D6A7' },
   generateButtonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  cardMinimal: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingTop: 20,
-    paddingBottom: 60,
-    paddingHorizontal: 24,
-    gap: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 8,
-    alignItems: 'center',
-  },
 });
+
