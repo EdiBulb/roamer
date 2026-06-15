@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
-import { Animated, Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, Image, Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRunHistory } from '../hooks/useRunHistory';
@@ -7,6 +7,72 @@ import { getTotalExploredCount } from '../services/streetTracker';
 import { BADGES } from '../services/badges';
 import { SettingsModal } from '../components/SettingsModal';
 import { useSettings } from '../hooks/useSettings';
+
+const STAMP_IMG = require('../../assets/icons/icon-stamp.png');
+
+function StampDay({ date, state, marking }: {
+  date?: { dateString: string; day: number; month: number; year: number };
+  state?: string;
+  marking?: { marked?: boolean };
+}) {
+  const isRanDay = marking?.marked;
+  const isToday = state === 'today';
+  const isDisabled = state === 'disabled';
+
+  return (
+    <View style={stampStyles.cell}>
+      {isRanDay && (
+        <Image source={STAMP_IMG} style={stampStyles.stamp} />
+      )}
+      <Text style={[
+        stampStyles.dayText,
+        isRanDay && stampStyles.dayTextStamped,
+        isToday && !isRanDay && stampStyles.dayTextToday,
+        isDisabled && stampStyles.dayTextDisabled,
+      ]}>
+        {date?.day}
+      </Text>
+    </View>
+  );
+}
+
+const stampStyles = StyleSheet.create({
+  cell: {
+    width: 36,
+    height: 36,
+  },
+  stamp: {
+    position: 'absolute',
+    width: 60,
+    height: 60,
+    top: -9,
+    left: -12,
+    opacity: 0.88,
+  },
+  dayText: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    textAlign: 'center',
+    textAlignVertical: 'center',
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1A1A1A',
+  },
+  dayTextStamped: {
+    color: '#fff',
+    fontWeight: '800',
+  },
+  dayTextToday: {
+    color: '#4CAF50',
+    fontWeight: '800',
+  },
+  dayTextDisabled: {
+    color: '#D0D0D0',
+  },
+});
 
 function formatTotalTime(seconds: number): string {
   const h = Math.floor(seconds / 3600);
@@ -108,13 +174,9 @@ export function CalendarScreen() {
       {/* Calendar */}
       <Calendar
         markedDates={markedDates}
+        dayComponent={StampDay}
         theme={{
-          todayTextColor: '#4CAF50',
           arrowColor: '#4CAF50',
-          selectedDayBackgroundColor: '#E8F5E9',
-          selectedDayTextColor: '#1A1A1A',
-          dotColor: '#4CAF50',
-          textDayFontWeight: '600',
           textMonthFontWeight: '800',
           textMonthFontSize: 16,
           calendarBackground: '#fff',
