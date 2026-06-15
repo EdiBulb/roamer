@@ -208,8 +208,15 @@ export function RunScreen() {
 
         const nextWp = route.waypoints?.[nextWaypointIndexRef.current];
         if (nextWp && segmentKm(coord, nextWp) * 1000 < 30) {
+          const arrivedAt = nextWaypointIndexRef.current + 1;
+          const total = route.waypoints.length;
           nextWaypointIndexRef.current += 1;
           setNextWaypointIndex(nextWaypointIndexRef.current);
+          Speech.stop();
+          const msg = arrivedAt === total
+            ? `Checkpoint ${arrivedAt} reached. Heading to the finish!`
+            : `Checkpoint ${arrivedAt} reached. Heading to checkpoint ${arrivedAt + 1}.`;
+          Speech.speak(msg, { language: 'en' });
         }
 
         const finishCoord = finishCoordRef.current;
