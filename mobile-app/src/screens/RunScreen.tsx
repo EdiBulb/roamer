@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
 
 const COLLAPSED_VISIBLE = 90;
+const CARD_COLLAPSED_VISIBLE = 80;
 import { useLocation } from '../hooks/useLocation';
 import { useRoute } from '../hooks/useRoute';
 import { MapDisplay } from '../components/MapDisplay';
@@ -66,6 +67,32 @@ export function RunScreen() {
   const panelNaturalHeightRef = useRef(0);
   const slideY = useRef(new Animated.Value(0)).current;
   const slideStartRef = useRef(0);
+  const cardNaturalHeightRef = useRef(0);
+  const cardSlideY = useRef(new Animated.Value(0)).current;
+  const cardSlideStartRef = useRef(0);
+
+  const cardPanResponder = useRef(PanResponder.create({
+    onMoveShouldSetPanResponder: (_, { dy }) => Math.abs(dy) > 5,
+    onPanResponderGrant: () => {
+      cardSlideY.stopAnimation();
+      cardSlideStartRef.current = (cardSlideY as any)._value;
+    },
+    onPanResponderMove: (_, { dy }) => {
+      const maxSlide = Math.max(0, cardNaturalHeightRef.current - CARD_COLLAPSED_VISIBLE);
+      cardSlideY.setValue(Math.max(0, Math.min(maxSlide, cardSlideStartRef.current + dy)));
+    },
+    onPanResponderRelease: (_, { dy, vy }) => {
+      const maxSlide = Math.max(0, cardNaturalHeightRef.current - CARD_COLLAPSED_VISIBLE);
+      const currentVal = cardSlideStartRef.current + dy;
+      const collapsed = Math.abs(vy) > 0.3 ? vy > 0 : currentVal > maxSlide / 2;
+      Animated.spring(cardSlideY, {
+        toValue: collapsed ? maxSlide : 0,
+        useNativeDriver: false,
+        bounciness: 4,
+        speed: 14,
+      }).start();
+    },
+  })).current;
 
   const panResponder = useRef(PanResponder.create({
     onMoveShouldSetPanResponder: (_, { dy }) => Math.abs(dy) > 5,
@@ -335,6 +362,7 @@ export function RunScreen() {
     setIsMyWayMode(false);
     isOffRouteRef.current = false;
     isMyWayModeRef.current = false;
+    cardSlideY.setValue(0);
     setIsRunning(true);
   }
 
@@ -462,22 +490,29 @@ export function RunScreen() {
         </Animated.View>
       )}
 
-      {!isRunning && (routeMode === 'destination' && !destination ? (
-        <View style={styles.card}>
+      {!isRunning && (
+        <Animated.View
+          style={[styles.card, { transform: [{ translateY: cardSlideY }] }]}
+          onLayout={(e) => { cardNaturalHeightRef.current = e.nativeEvent.layout.height; }}
+          {...cardPanResponder.panHandlers}
+        >
+          <View style={styles.cardHandle} />
+          {routeMode === 'destination' && !destination ? (
+          <>
           <Text style={styles.appTitle}>Roamer</Text>
-          <ModePicker selected={routeMode} onSelect={(m) => { setRouteMode(m); setDestination(null); clearRoute(); }} />
+          <ModePicker selected={routeMode} onSelect={(m) => { setRouteMode(m); setDestination(null); clearRoute(); cardSlideY.setValue(0); }} />
           {location && (
             <DestinationPicker
               userLocation={location}
               onSelect={(coord) => setDestination(coord)}
             />
           )}
-        </View>
-      ) : (
-        <View style={styles.card}>
+          </>
+          ) : (
+          <>
           <Text style={styles.appTitle}>Roamer</Text>
 
-          <ModePicker selected={routeMode} onSelect={(m) => { setRouteMode(m); setDestination(null); clearRoute(); }} />
+          <ModePicker selected={routeMode} onSelect={(m) => { setRouteMode(m); setDestination(null); clearRoute(); cardSlideY.setValue(0); }} />
 
           {routeMode === 'loop' ? (
             <DistancePicker selected={selectedDistance} onSelect={(d) => { setSelectedDistance(d); if (isActive) advance(1); }} />
@@ -523,8 +558,10 @@ export function RunScreen() {
               )}
             </TouchableOpacity>
           )}
-        </View>
-      ))}
+          </>
+          )}
+        </Animated.View>
+      )}
     </KeyboardAvoidingView>
   );
 }
@@ -615,11 +652,15 @@ const styles = StyleSheet.create({
   loadingText: { fontSize: 14, color: '#666' },
   errorText: { fontSize: 14, color: '#E53935', textAlign: 'center', paddingHorizontal: 24 },
   card: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     backgroundColor: '#fff',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    paddingTop: 20,
-    paddingBottom: 100,
+    paddingTop: 12,
+    paddingBottom: 60,
     paddingHorizontal: 24,
     gap: 16,
     shadowColor: '#000',
@@ -628,6 +669,14 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 8,
     alignItems: 'center',
+  },
+  cardHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#E0E0E0',
+    alignSelf: 'center',
+    marginBottom: 4,
   },
   appTitle: { fontSize: 22, fontWeight: 'bold', color: '#1A1A1A' },
   startRunButton: {
