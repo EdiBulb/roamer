@@ -145,22 +145,22 @@ export const translations = {
   ko: {
     nav: {
       brand: 'Roamer',
-      joinBeta: '베타 참여',
+      joinBeta: 'Join Beta',
       langToggle: 'EN',
     },
     hero: {
-      badge: '클로즈드 베타 진행 중',
+      badge: 'Now in Closed Beta',
       titleLine1: '당신은 얼마나 많은 거리를',
       titleHighlight: '탐험했나요?',
       subtitle:
         '매번 같은 루트만 뛰지 마세요. 새로운 거리를 탐험하고, 도시의 숨겨진 곳을 발견하며, 매 달리기를 모험으로 만드세요.',
-      ctaPrimary: '베타 참여하기',
-      ctaSecondary: '▶ 데모 보기',
-      note: '계정 불필요 · 기록은 내 기기에만 저장',
-      scrollLabel: '탐험하기',
+      ctaPrimary: 'Join the Beta',
+      ctaSecondary: '▶ Watch Demo',
+      note: 'No account required · Runs stay on your device',
+      scrollLabel: 'Explore',
     },
     problem: {
-      label: '문제점',
+      label: 'The Problem',
       heading: '매번 같은 루트는 지루해집니다.',
       body: [
         '대부분의 러닝 앱은 속도, 거리, 퍼포먼스에만 집중합니다.',
@@ -170,7 +170,7 @@ export const translations = {
       conclusion: 'Roamer는 달리기를 다시 설레게 만들기 위해 만들어졌습니다.',
     },
     howItWorks: {
-      label: '사용 방법',
+      label: 'How It Works',
       heading: '세 단계로 시작하는 새로운 모험.',
       steps: [
         {
@@ -189,21 +189,21 @@ export const translations = {
             '새로운 거리를 잠금 해제하고, 배지를 획득하며, 나만의 도시 탐험 지도를 만드세요.',
         },
       ],
-      cta: '얼리 액세스 신청',
+      cta: 'Get Early Access',
     },
     whyDifferent: {
-      label: '왜 Roamer인가',
+      label: 'Why Roamer',
       heading: '다른 종류의 러닝 앱.',
       traditionalLabel: '일반 러닝 앱',
       roamerLabel: 'Roamer',
       traditional: ['거리 & 페이스', '퍼포먼스 지표', '속도 기록', '경쟁'],
       roamer: ['탐험한 거리', '도시 탐험', '새로운 모험', '나만의 발견'],
-      privacyTitle: '처음부터 프라이버시 중심 설계',
+      privacyTitle: 'Privacy-first by design',
       privacyDesc:
-        '소셜 추적 없음. 불필요한 계정 없음. 탐험 기록은 내 기기에만 저장됩니다.',
+        'No social tracking. No unnecessary accounts. Your exploration stays on your device.',
     },
     discoveryConcept: {
-      label: '컨셉',
+      label: 'The Concept',
       heading: '달릴 때마다 새로운 것이 보입니다.',
       subtitle:
         'Roamer는 독특한 루트를 생성하고, 한 번도 탐험하지 않은 거리를 추적합니다.',
@@ -222,12 +222,12 @@ export const translations = {
       ],
     },
     screenshots: {
-      label: '앱 소개',
+      label: 'The App',
       heading: '거리를 위해 만들어졌습니다.',
       screens: ['루트 생성', '내비게이션', '거리 발견', '트레일'],
     },
     whatsComing: {
-      label: '다음에 올 것들',
+      label: "What's Coming",
       heading: '탐험은 이제 시작입니다.',
       subtitle: '베타 유저가 Roamer의 미래를 만듭니다.',
       features: [
@@ -250,7 +250,7 @@ export const translations = {
       ],
     },
     founderStory: {
-      label: '스토리',
+      label: 'The Story',
       heading: '같은 거리를 뛰는 것이 지루해진 러너가 만든 앱.',
       paragraphs: [
         '훈련하면서 매주 같은 루트만 뛰고 있다는 것을 깨달았습니다.',
@@ -262,14 +262,14 @@ export const translations = {
       credit: '— Harry, Roamer 창업자',
     },
     waitlist: {
-      badge: '클로즈드 베타',
+      badge: 'Closed Beta',
       heading: '첫 번째 탐험가가 되세요.',
       subheading: 'Roamer는 현재 클로즈드 베타 진행 중입니다.',
       body: '웨이트리스트에 참여해 탐험 중심 러닝의 미래를 함께 만들어 가세요.',
       namePlaceholder: '이름 (선택)',
       emailPlaceholder: '이메일 주소',
-      submitting: '참여 중...',
-      submit: '베타 참여하기',
+      submitting: 'Joining...',
+      submit: 'Join the Beta',
       error: '오류가 발생했습니다. 다시 시도해 주세요.',
       successTitle: '등록 완료!',
       successBody:
@@ -277,7 +277,7 @@ export const translations = {
       note: '스팸 없음. 계정 불필요. 언제든지 구독 취소 가능.',
     },
     footer: {
-      tagline: '호기심으로 만들었습니다. 새로운 곳을 달리세요.',
+      tagline: 'Built with curiosity. Run somewhere new.',
       privacy: '개인정보처리방침',
       contact: '문의',
     },
