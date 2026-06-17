@@ -137,8 +137,6 @@ export const translations = {
     },
     footer: {
       tagline: 'Built with curiosity. Run somewhere new.',
-      privacy: 'Privacy Policy',
-      contact: 'Contact',
     },
   },
 
@@ -278,8 +276,6 @@ export const translations = {
     },
     footer: {
       tagline: 'Built with curiosity. Run somewhere new.',
-      privacy: '개인정보처리방침',
-      contact: '문의',
     },
   },
 } as const;

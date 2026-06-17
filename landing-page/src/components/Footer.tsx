@@ -13,11 +13,6 @@ export function Footer() {
           <p className="text-stone-600 text-sm">{t.footer.tagline}</p>
         </div>
 
-        <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-stone-500">
-          <a href="/privacy" className="hover:text-stone-300 transition-colors">{t.footer.privacy}</a>
-          <a href="mailto:qudgns246@gmail.com" className="hover:text-stone-300 transition-colors">{t.footer.contact}</a>
-          <a href="https://github.com/EdiBulb/roamer" target="_blank" rel="noopener noreferrer" className="hover:text-stone-300 transition-colors">GitHub</a>
-        </nav>
       </div>
     </footer>
   );
