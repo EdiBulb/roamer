@@ -2,13 +2,12 @@
 
 import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
-
-const traditional = ["Distance & Pace", "Performance Metrics", "Speed Records", "Competition"];
-const roamer = ["Streets Discovered", "City Exploration", "New Adventures", "Personal Discovery"];
+import { useLocale } from "@/context/LocaleContext";
 
 export function WhyDifferent() {
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: "0px" });
+  const { t } = useLocale();
 
   return (
     <section ref={ref} className="py-32 px-6 bg-[#0a0a0a]">
@@ -19,7 +18,7 @@ export function WhyDifferent() {
           transition={{ duration: 0.6 }}
           className="text-green-400 text-sm font-semibold tracking-widest uppercase mb-6"
         >
-          Why Roamer
+          {t.whyDifferent.label}
         </motion.p>
 
         <motion.h2
@@ -28,7 +27,7 @@ export function WhyDifferent() {
           transition={{ duration: 0.7, delay: 0.1 }}
           className="text-4xl sm:text-5xl font-black tracking-tight text-stone-50 mb-16 leading-tight"
         >
-          A different kind of running app.
+          {t.whyDifferent.heading}
         </motion.h2>
 
         <div className="grid md:grid-cols-2 gap-6 mb-12">
@@ -40,10 +39,10 @@ export function WhyDifferent() {
             className="bg-[#141414] border border-[#2a2a2a] rounded-2xl p-8"
           >
             <h3 className="text-stone-500 font-semibold text-sm tracking-widest uppercase mb-6">
-              Traditional Running Apps
+              {t.whyDifferent.traditionalLabel}
             </h3>
             <ul className="space-y-3">
-              {traditional.map((item, i) => (
+              {t.whyDifferent.traditional.map((item, i) => (
                 <li key={i} className="flex items-center gap-3 text-stone-500">
                   <span className="text-stone-700">✕</span>
                   {item}
@@ -60,10 +59,10 @@ export function WhyDifferent() {
             className="bg-green-400/5 border border-green-400/20 rounded-2xl p-8"
           >
             <h3 className="text-green-400 font-semibold text-sm tracking-widest uppercase mb-6">
-              Roamer
+              {t.whyDifferent.roamerLabel}
             </h3>
             <ul className="space-y-3">
-              {roamer.map((item, i) => (
+              {t.whyDifferent.roamer.map((item, i) => (
                 <li key={i} className="flex items-center gap-3 text-stone-100">
                   <span className="text-green-400">✓</span>
                   {item}
@@ -84,10 +83,8 @@ export function WhyDifferent() {
             🔒
           </div>
           <div>
-            <p className="text-stone-100 font-semibold mb-1">Privacy-first by design</p>
-            <p className="text-stone-500 text-sm">
-              No social tracking. No unnecessary accounts. Your exploration stays on your device.
-            </p>
+            <p className="text-stone-100 font-semibold mb-1">{t.whyDifferent.privacyTitle}</p>
+            <p className="text-stone-500 text-sm">{t.whyDifferent.privacyDesc}</p>
           </div>
         </motion.div>
       </div>

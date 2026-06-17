@@ -2,17 +2,19 @@
 
 import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
+import { useLocale } from "@/context/LocaleContext";
 
-const screens = [
-  { label: "Route Generation", video: "/videos/route-generation.mp4" },
-  { label: "Navigation", video: "/videos/navigation.mp4" },
-  { label: "Street Discovery", video: "/videos/street-discovery.mp4" },
-  { label: "Trail", video: "/videos/trail.mp4" },
+const videos = [
+  "/videos/route-generation.mp4",
+  "/videos/navigation.mp4",
+  "/videos/street-discovery.mp4",
+  "/videos/trail.mp4",
 ];
 
 export function Screenshots() {
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: "0px" });
+  const { t } = useLocale();
 
   return (
     <section ref={ref} className="py-32 px-6 bg-[#0d0d0d] overflow-hidden">
@@ -23,7 +25,7 @@ export function Screenshots() {
           transition={{ duration: 0.6 }}
           className="text-green-400 text-sm font-semibold tracking-widest uppercase mb-6"
         >
-          The App
+          {t.screenshots.label}
         </motion.p>
 
         <motion.h2
@@ -32,11 +34,11 @@ export function Screenshots() {
           transition={{ duration: 0.7, delay: 0.1 }}
           className="text-4xl sm:text-5xl font-black tracking-tight text-stone-50 mb-16 leading-tight"
         >
-          Built for the streets.
+          {t.screenshots.heading}
         </motion.h2>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {screens.map((screen, i) => (
+          {t.screenshots.screens.map((label, i) => (
             <motion.div
               key={i}
               initial={{ opacity: 0, y: 32 }}
@@ -48,7 +50,7 @@ export function Screenshots() {
               <div className="relative mx-auto w-full max-w-[160px]">
                 <div className="bg-[#1a1a1a] border border-[#333] rounded-[32px] p-2 shadow-2xl">
                   <video
-                    src={screen.video}
+                    src={videos[i]}
                     autoPlay
                     loop
                     muted
@@ -59,7 +61,7 @@ export function Screenshots() {
                 {/* Notch */}
                 <div className="absolute top-4 left-1/2 -translate-x-1/2 w-12 h-1.5 bg-[#0a0a0a] rounded-full" />
               </div>
-              <p className="text-center text-stone-500 text-xs font-medium">{screen.label}</p>
+              <p className="text-center text-stone-500 text-xs font-medium">{label}</p>
             </motion.div>
           ))}
         </div>

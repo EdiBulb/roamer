@@ -2,10 +2,13 @@
 
 import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
+import { useLocale } from "@/context/LocaleContext";
 
 export function FounderStory() {
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: "0px" });
+  const { t } = useLocale();
+  const p = t.founderStory.paragraphs;
 
   return (
     <section ref={ref} className="py-32 px-6 bg-[#0d0d0d]">
@@ -16,7 +19,7 @@ export function FounderStory() {
           transition={{ duration: 0.6 }}
           className="text-green-400 text-sm font-semibold tracking-widest uppercase mb-6"
         >
-          The Story
+          {t.founderStory.label}
         </motion.p>
 
         <motion.h2
@@ -25,7 +28,7 @@ export function FounderStory() {
           transition={{ duration: 0.7, delay: 0.1 }}
           className="text-4xl sm:text-5xl font-black tracking-tight text-stone-50 mb-12 leading-tight"
         >
-          Built by a runner who got tired of running the same streets.
+          {t.founderStory.heading}
         </motion.h2>
 
         <div className="flex flex-col sm:flex-row gap-10 items-start">
@@ -42,31 +45,33 @@ export function FounderStory() {
           </motion.div>
 
           <div className="space-y-5">
-            {[
-              "I was training and realized I was running the same routes every week.",
-              "I wanted a way to make running feel fresh again — to actually see my city instead of just getting steps in.",
-              "Roamer started with a simple question: how many streets have I never explored?",
-              "Today, it's becoming a tool to help runners rediscover their cities, one street at a time.",
-            ].map((text, i) => (
-              <motion.p
-                key={i}
-                initial={{ opacity: 0, y: 12 }}
-                animate={inView ? { opacity: 1, y: 0 } : {}}
-                transition={{ duration: 0.6, delay: 0.3 + i * 0.1 }}
-                className="text-lg text-stone-400 leading-relaxed"
-              >
-                {i === 2 ? (
-                  <>
-                    Roamer started with a simple question:{" "}
-                    <span className="text-stone-100 italic">
-                      how many streets have I never explored?
-                    </span>
-                  </>
-                ) : (
-                  text
-                )}
-              </motion.p>
-            ))}
+            {[p[0], p[1], null, p[4]].map((text, i) => {
+              if (i === 2) {
+                return (
+                  <motion.p
+                    key={i}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={inView ? { opacity: 1, y: 0 } : {}}
+                    transition={{ duration: 0.6, delay: 0.3 + i * 0.1 }}
+                    className="text-lg text-stone-400 leading-relaxed"
+                  >
+                    {p[2]}{" "}
+                    <span className="text-stone-100 italic">{p[3]}</span>
+                  </motion.p>
+                );
+              }
+              return (
+                <motion.p
+                  key={i}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={inView ? { opacity: 1, y: 0 } : {}}
+                  transition={{ duration: 0.6, delay: 0.3 + i * 0.1 }}
+                  className="text-lg text-stone-400 leading-relaxed"
+                >
+                  {text}
+                </motion.p>
+              );
+            })}
 
             <motion.p
               initial={{ opacity: 0 }}
@@ -74,7 +79,7 @@ export function FounderStory() {
               transition={{ duration: 0.6, delay: 0.7 }}
               className="text-stone-600 text-sm pt-2"
             >
-              — Harry, founder of Roamer
+              {t.founderStory.credit}
             </motion.p>
           </div>
         </div>

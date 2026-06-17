@@ -1,12 +1,13 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { useInView } from "framer-motion";
+import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
+import { useLocale } from "@/context/LocaleContext";
 
 export function Problem() {
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: "0px" });
+  const { t } = useLocale();
 
   return (
     <section ref={ref} className="py-32 px-6 bg-[#0d0d0d]">
@@ -17,7 +18,7 @@ export function Problem() {
           transition={{ duration: 0.6 }}
           className="text-green-400 text-sm font-semibold tracking-widest uppercase mb-6"
         >
-          The Problem
+          {t.problem.label}
         </motion.p>
 
         <motion.h2
@@ -26,15 +27,11 @@ export function Problem() {
           transition={{ duration: 0.7, delay: 0.1 }}
           className="text-4xl sm:text-5xl font-black tracking-tight text-stone-50 mb-10 leading-tight"
         >
-          Running the same route gets boring.
+          {t.problem.heading}
         </motion.h2>
 
         <div className="space-y-6">
-          {[
-            "Most running apps focus on speed, distance, and performance.",
-            "But after a while, many runners find themselves repeating the same streets over and over again.",
-            "The city becomes invisible.",
-          ].map((text, i) => (
+          {t.problem.body.map((text, i) => (
             <motion.p
               key={i}
               initial={{ opacity: 0, y: 16 }}
@@ -52,7 +49,7 @@ export function Problem() {
             transition={{ duration: 0.6, delay: 0.5 }}
             className="text-xl text-stone-100 font-semibold pt-2"
           >
-            Roamer was built to make running feel exciting again.
+            {t.problem.conclusion}
           </motion.p>
         </div>
       </div>
