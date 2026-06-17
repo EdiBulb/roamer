@@ -7,7 +7,10 @@ export function Hero() {
   const { t, toggleLocale } = useLocale();
 
   return (
-    <section className="relative min-h-screen flex flex-col items-center justify-center px-6 overflow-hidden map-grid">
+    <section
+      className="relative min-h-screen flex flex-col items-center justify-center px-6 overflow-hidden map-grid"
+      style={{ paddingTop: 'env(safe-area-inset-top)' }}
+    >
       {/* Ambient glow */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
         <div className="w-[600px] h-[600px] rounded-full bg-green-500/5 blur-3xl" />
