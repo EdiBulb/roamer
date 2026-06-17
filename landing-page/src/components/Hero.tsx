@@ -14,7 +14,10 @@ export function Hero() {
       </div>
 
       {/* Nav */}
-      <nav className="absolute top-0 left-0 right-0 flex items-center justify-between px-8 py-6 z-10">
+      <nav
+        className="absolute top-0 left-0 right-0 flex items-center justify-between px-8 z-10"
+        style={{ paddingTop: 'calc(env(safe-area-inset-top) + 24px)', paddingBottom: '24px' }}
+      >
         <span className="text-lg font-bold tracking-tight text-stone-100">{t.nav.brand}</span>
         <div className="flex items-center gap-3">
           <a
