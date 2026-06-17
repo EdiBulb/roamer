@@ -76,7 +76,7 @@ export function Hero() {
             {t.hero.ctaPrimary}
           </a>
           <a
-            href="#YOUTUBE_DEMO_URL"
+            href="https://www.youtube.com/shorts/TkTrvuUdM8c"
             target="_blank"
             rel="noopener noreferrer"
             className="w-full sm:w-auto px-8 py-4 border border-stone-700 text-stone-300 font-medium rounded-full text-base hover:border-stone-500 hover:text-stone-100 transition-colors"
