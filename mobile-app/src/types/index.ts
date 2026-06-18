@@ -35,6 +35,21 @@ export interface RunRecord {
   newStreetSegments?: Coordinate[][];  // per-step coordinate arrays for new streets
 }
 
+export interface RoadSegment {
+  id: string;
+  coordinates: Coordinate[];
+}
+
+export interface Area {
+  id: string;
+  name: string;
+  center: Coordinate;
+  radiusKm: number;
+  segments: RoadSegment[];
+  coloredSegmentIds: string[];
+  createdAt: string;
+}
+
 export interface Badge {
   id: string;
   name: string;

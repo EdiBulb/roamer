@@ -4,7 +4,7 @@ import { Animated, Image, StyleSheet, Text, TouchableOpacity, View } from 'react
 import { Magnetometer } from 'expo-sensors';
 import { MAPBOX_TOKEN, DEFAULT_ZOOM } from '../constants';
 import { getBoundingBox } from '../services/mapboxApi';
-import { Coordinate, RunRoute } from '../types';
+import { Area, Coordinate, RunRoute } from '../types';
 
 MapboxGL.setAccessToken(MAPBOX_TOKEN);
 
@@ -71,6 +71,7 @@ interface Props {
   nextWaypointIndex?: number;
   isMyWayMode?: boolean;
   historyRoutes?: Coordinate[][];
+  activeArea?: Area | null;
 }
 
 export function MapDisplay({
@@ -87,6 +88,7 @@ export function MapDisplay({
   nextWaypointIndex = 0,
   isMyWayMode = false,
   historyRoutes = [],
+  activeArea = null,
 }: Props) {
   const center: [number, number] = [location.longitude, location.latitude];
   const cameraRef = useRef<MapboxGL.Camera>(null);
@@ -191,6 +193,24 @@ export function MapDisplay({
     ];
   }, [segments]);
 
+  // ── area segment GeoJSONs (not running) ──────────────────────────────────
+
+  const areaSegmentGeoJSON = useMemo(() => {
+    if (!activeArea || activeArea.segments.length === 0) return null;
+    const coloredSet = new Set(activeArea.coloredSegmentIds);
+    const colored: GeoJSON.Feature<GeoJSON.LineString>[] = [];
+    const uncolored: GeoJSON.Feature<GeoJSON.LineString>[] = [];
+    for (const seg of activeArea.segments) {
+      const feature = toLineGeoJSON(seg.coordinates);
+      if (coloredSet.has(seg.id)) colored.push(feature);
+      else uncolored.push(feature);
+    }
+    return {
+      colored: { type: 'FeatureCollection' as const, features: colored },
+      uncolored: { type: 'FeatureCollection' as const, features: uncolored },
+    };
+  }, [activeArea]);
+
   // ── history routes GeoJSON (not running) ─────────────────────────────────
 
   const historyGeoJSON: GeoJSON.FeatureCollection<GeoJSON.LineString> | null = useMemo(() => {
@@ -253,6 +273,24 @@ export function MapDisplay({
               <View style={styles.destinationInner} />
             </View>
           </MapboxGL.PointAnnotation>
+        )}
+
+        {/* ── area segments (not running) ── */}
+        {areaSegmentGeoJSON && !isRunning && (
+          <>
+            <MapboxGL.ShapeSource id="area-uncolored" shape={areaSegmentGeoJSON.uncolored}>
+              <MapboxGL.LineLayer
+                id="area-uncolored-line"
+                style={{ lineColor: '#E0E0E0', lineWidth: 3, lineJoin: 'round', lineCap: 'round', lineOpacity: 0.8 }}
+              />
+            </MapboxGL.ShapeSource>
+            <MapboxGL.ShapeSource id="area-colored" shape={areaSegmentGeoJSON.colored}>
+              <MapboxGL.LineLayer
+                id="area-colored-line"
+                style={{ lineColor: '#4CAF50', lineWidth: 4, lineJoin: 'round', lineCap: 'round', lineOpacity: 0.9 }}
+              />
+            </MapboxGL.ShapeSource>
+          </>
         )}
 
         {/* ── history routes (not running) ── */}

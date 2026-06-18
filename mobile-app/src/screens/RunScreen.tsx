@@ -14,13 +14,17 @@ import { RunSummaryScreen } from '../components/RunSummaryScreen';
 import * as Speech from 'expo-speech';
 import * as Location from 'expo-location';
 import { DEMO_MODE } from '../constants';
-import { Coordinate, Difficulty, RouteMode, TargetDistance } from '../types';
+import { Area, Coordinate, Difficulty, RouteMode, TargetDistance } from '../types';
 import { ModePicker } from '../components/ModePicker';
 import { DifficultyPicker } from '../components/DifficultyPicker';
 import { DestinationPicker } from '../components/DestinationPicker';
 import { useSettings } from '../hooks/useSettings';
 import { useTutorial } from '../contexts/TutorialContext';
 import { useRunHistory } from '../hooks/useRunHistory';
+import { CreateAreaModal } from '../components/CreateAreaModal';
+import { loadAreas } from '../services/areaStorage';
+import { useFocusEffect } from '@react-navigation/native';
+import { useCallback } from 'react';
 
 function segmentKm(a: Coordinate, b: Coordinate): number {
   const R = 6371;
@@ -48,6 +52,17 @@ export function RunScreen() {
   const historyRoutes = history
     .filter((r) => r.routeCoordinates?.length >= 2)
     .map((r) => r.routeCoordinates);
+
+  const [areas, setAreas] = useState<Area[]>([]);
+  const [activeArea, setActiveArea] = useState<Area | null>(null);
+  const [showCreateArea, setShowCreateArea] = useState(false);
+
+  useFocusEffect(useCallback(() => {
+    loadAreas().then((loaded) => {
+      setAreas(loaded);
+      if (loaded.length > 0 && !activeArea) setActiveArea(loaded[0]);
+    });
+  }, []));
   const settingsRef = useRef(settings);
   useEffect(() => { settingsRef.current = settings; }, [settings]);
   const { location, loading: locationLoading, error: locationError } = useLocation();
@@ -439,6 +454,7 @@ export function RunScreen() {
         elapsedSeconds={elapsedSeconds}
         route={route}
         onHome={handleHome}
+        activeArea={activeArea}
       />
     );
   }
@@ -479,8 +495,39 @@ export function RunScreen() {
             nextWaypointIndex={nextWaypointIndex}
             isMyWayMode={isMyWayMode}
             historyRoutes={historyRoutes}
+            activeArea={activeArea}
           />
         )}
+
+        {/* ── Area button (idle, not running) ── */}
+        {!isRunning && displayLocation && (
+          <TouchableOpacity
+            style={styles.areaBtn}
+            onPress={() => setShowCreateArea(true)}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.areaBtnText}>
+              {activeArea ? `📍 ${activeArea.name}` : '＋ Create Area'}
+            </Text>
+            {activeArea && (
+              <Text style={styles.areaBtnSub}>
+                {Math.round((activeArea.coloredSegmentIds.length / Math.max(activeArea.segments.length, 1)) * 100)}% explored
+              </Text>
+            )}
+          </TouchableOpacity>
+        )}
+
+        <CreateAreaModal
+          visible={showCreateArea}
+          location={displayLocation ?? { latitude: 0, longitude: 0 }}
+          onClose={() => setShowCreateArea(false)}
+          onCreated={(area) => {
+            setAreas((prev) => [area, ...prev.filter((a) => a.id !== area.id)]);
+            setActiveArea(area);
+            setShowCreateArea(false);
+          }}
+        />
+
 {isRunning && isOffRoute && (
           <View style={styles.offRouteBanner}>
             <Text style={styles.offRouteBannerText}>Off route</Text>
@@ -622,6 +669,22 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 6,
   },
+  areaBtn: {
+    position: 'absolute',
+    top: 16,
+    left: 16,
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  areaBtnText: { fontSize: 14, fontWeight: '700', color: '#1A1A1A' },
+  areaBtnSub: { fontSize: 11, color: '#4CAF50', fontWeight: '600', marginTop: 2 },
   offRouteBanner: {
     position: 'absolute',
     top: 16,

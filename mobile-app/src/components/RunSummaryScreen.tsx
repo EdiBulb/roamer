@@ -3,10 +3,12 @@ import { Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View 
 import { useNavigation } from '@react-navigation/native';
 import MapboxGL from '@rnmapbox/maps';
 import { MAPBOX_TOKEN } from '../constants';
-import { Badge, Coordinate, RunRecord, RunRoute } from '../types';
+import { Area, Badge, Coordinate, RunRecord, RunRoute } from '../types';
 import { saveRunRecord } from '../services/storage';
 import { findNewStreets, getTotalExploredCount, saveNewStreets } from '../services/streetTracker';
 import { getNewlyEarnedBadges } from '../services/badges';
+import { matchTraceToSegments } from '../services/overpassApi';
+import { updateAreaColoredSegments } from '../services/areaStorage';
 
 MapboxGL.setAccessToken(MAPBOX_TOKEN);
 
@@ -15,6 +17,7 @@ interface Props {
   elapsedSeconds: number;
   route: RunRoute;
   onHome: () => void;
+  activeArea?: Area | null;
 }
 
 function formatTime(seconds: number): string {
@@ -49,7 +52,7 @@ function getBoundingBox(coordinates: Coordinate[]) {
   };
 }
 
-export function RunSummaryScreen({ coveredKm, elapsedSeconds, route, onHome }: Props) {
+export function RunSummaryScreen({ coveredKm, elapsedSeconds, route, onHome, activeArea }: Props) {
   const runNameRef = useRef(defaultRunName());
   const navigation = useNavigation();
   const [newBadges, setNewBadges] = useState<Badge[]>([]);
@@ -109,6 +112,11 @@ export function RunSummaryScreen({ coveredKm, elapsedSeconds, route, onHome }: P
       newStreetSegments: newStreetSegments.length > 0 ? newStreetSegments : undefined,
     };
     await saveRunRecord(record);
+
+    if (activeArea && activeArea.segments.length > 0) {
+      const matched = matchTraceToSegments(route.coordinates, activeArea.segments);
+      if (matched.length > 0) await updateAreaColoredSegments(activeArea.id, matched);
+    }
 
     setNewStreetCount(newStreets.length);
     setSavedNewStreets(newStreets);
