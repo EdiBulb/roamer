@@ -1,5 +1,5 @@
 import { MAPBOX_TOKEN } from '../constants';
-import { Coordinate, Difficulty, RouteStep, RunRoute } from '../types';
+import { Area, Coordinate, Difficulty, RouteStep, RoadSegment, RunRoute } from '../types';
 
 const DIRECTIONS_URL = 'https://api.mapbox.com/directions/v5/mapbox/walking';
 
@@ -110,13 +110,52 @@ async function fetchRawRoute(points: Coordinate[]): Promise<{ route: any; snappe
   return { route, snappedWaypoints };
 }
 
-export async function fetchRandomRoute(origin: Coordinate, targetKm: number): Promise<RunRoute> {
+function haversineKmInternal(a: Coordinate, b: Coordinate): number {
+  const R = 6371;
+  const dLat = ((b.latitude - a.latitude) * Math.PI) / 180;
+  const dLon = ((b.longitude - a.longitude) * Math.PI) / 180;
+  const lat1 = (a.latitude * Math.PI) / 180;
+  const lat2 = (b.latitude * Math.PI) / 180;
+  const x = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.asin(Math.sqrt(x));
+}
+
+// Picks waypoints from uncolored segments of the active area so the route explores new streets.
+// Falls back to random waypoints if not enough uncolored segments are reachable.
+function generateExplorationWaypoints(
+  origin: Coordinate,
+  targetKm: number,
+  uncoloredSegments: RoadSegment[],
+): Coordinate[] {
+  const maxReachKm = targetKm * 0.6;
+  const candidates: Coordinate[] = [];
+  for (const seg of uncoloredSegments) {
+    const mid = seg.coordinates[Math.floor(seg.coordinates.length / 2)];
+    if (haversineKmInternal(origin, mid) <= maxReachKm) candidates.push(mid);
+  }
+
+  if (candidates.length < 2) return generateWaypoints(origin, targetKm);
+
+  const count = Math.random() < 0.5 ? 3 : 4;
+  const picked: Coordinate[] = [];
+  const pool = [...candidates].sort(() => Math.random() - 0.5);
+  for (let i = 0; i < Math.min(count, pool.length); i++) picked.push(pool[i]);
+  return picked;
+}
+
+export async function fetchRandomRoute(origin: Coordinate, targetKm: number, activeArea?: Area | null): Promise<RunRoute> {
+  const uncoloredSegments = activeArea
+    ? activeArea.segments.filter((s) => !activeArea.coloredSegmentIds.includes(s.id))
+    : [];
+
   const MAX_ATTEMPTS = 3;
   let route: any = null;
   let usedWaypoints: Coordinate[] = [];
 
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-    usedWaypoints = generateWaypoints(origin, targetKm);
+    usedWaypoints = uncoloredSegments.length >= 2
+      ? generateExplorationWaypoints(origin, targetKm, uncoloredSegments)
+      : generateWaypoints(origin, targetKm);
     const result = await fetchRawRoute([origin, ...usedWaypoints, origin]);
     route = result.route;
     usedWaypoints = result.snappedWaypoints;

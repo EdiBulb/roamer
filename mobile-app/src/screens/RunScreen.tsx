@@ -72,7 +72,7 @@ export function RunScreen() {
   const [routeMode, setRouteMode] = useState<RouteMode>('loop');
   const [destination, setDestination] = useState<Coordinate | null>(null);
   const [difficulty, setDifficulty] = useState<Difficulty>('normal');
-  const { route, status, generate, clearRoute } = useRoute(location, selectedDistance, routeMode, destination, difficulty);
+  const { route, status, generate, clearRoute } = useRoute(location, selectedDistance, routeMode, destination, difficulty, activeArea);
   const [isRunning, setIsRunning] = useState(false);
   const [isFinished, setIsFinished] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -497,7 +497,8 @@ export function RunScreen() {
             nextWaypointIndex={nextWaypointIndex}
             isMyWayMode={isMyWayMode}
             historyRoutes={historyRoutes}
-            activeArea={activeArea}
+            areas={areas}
+            activeAreaId={activeArea?.id ?? null}
           />
         )}
 

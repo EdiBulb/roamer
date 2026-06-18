@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { fetchRandomRoute, fetchDestinationRoute } from '../services/mapboxApi';
-import { Coordinate, Difficulty, RouteMode, RunRoute, RouteStatus, TargetDistance } from '../types';
+import { Area, Coordinate, Difficulty, RouteMode, RunRoute, RouteStatus, TargetDistance } from '../types';
 
 interface UseRouteResult {
   route: RunRoute | null;
@@ -14,7 +14,8 @@ export function useRoute(
   targetKm: TargetDistance,
   mode: RouteMode,
   destination: Coordinate | null,
-  difficulty: Difficulty
+  difficulty: Difficulty,
+  activeArea?: Area | null,
 ): UseRouteResult {
   const [route, setRoute] = useState<RunRoute | null>(null);
   const [status, setStatus] = useState<RouteStatus>('idle');
@@ -29,13 +30,13 @@ export function useRoute(
     try {
       const result = mode === 'destination' && destination
         ? await fetchDestinationRoute(origin, destination, difficulty)
-        : await fetchRandomRoute(origin, targetKm);
+        : await fetchRandomRoute(origin, targetKm, activeArea);
       setRoute(result);
       setStatus('success');
     } catch {
       setStatus('error');
     }
-  }, [origin, targetKm, mode, destination, difficulty]);
+  }, [origin, targetKm, mode, destination, difficulty, activeArea]);
 
   const clearRoute = useCallback(() => {
     setRoute(null);

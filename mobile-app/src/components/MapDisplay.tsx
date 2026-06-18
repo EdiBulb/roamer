@@ -101,7 +101,8 @@ interface Props {
   nextWaypointIndex?: number;
   isMyWayMode?: boolean;
   historyRoutes?: Coordinate[][];
-  activeArea?: Area | null;
+  areas?: Area[];
+  activeAreaId?: string | null;
 }
 
 export function MapDisplay({
@@ -118,7 +119,8 @@ export function MapDisplay({
   nextWaypointIndex = 0,
   isMyWayMode = false,
   historyRoutes = [],
-  activeArea = null,
+  areas = [],
+  activeAreaId = null,
 }: Props) {
   const center: [number, number] = [location.longitude, location.latitude];
   const cameraRef = useRef<MapboxGL.Camera>(null);
@@ -223,30 +225,55 @@ export function MapDisplay({
     ];
   }, [segments]);
 
-  // ── area boundary circle (not running) ───────────────────────────────────
+  // ── area boundary circles (not running) ──────────────────────────────────
 
-  const areaCircleGeoJSON = useMemo(() => {
-    if (!activeArea) return null;
-    return makeCircleGeoJSON(activeArea.center, activeArea.radiusKm);
-  }, [activeArea]);
+  const { activeCircleGeoJSON, otherCirclesGeoJSON } = useMemo(() => {
+    const active = areas.find((a) => a.id === activeAreaId);
+    const others = areas.filter((a) => a.id !== activeAreaId);
+    return {
+      activeCircleGeoJSON: active ? makeCircleGeoJSON(active.center, active.radiusKm) : null,
+      otherCirclesGeoJSON: others.length > 0
+        ? { type: 'FeatureCollection' as const, features: others.map((a) => makeCircleGeoJSON(a.center, a.radiusKm)) }
+        : null,
+    };
+  }, [areas, activeAreaId]);
 
-  // ── area segment GeoJSONs (not running) ──────────────────────────────────
+  // ── area segment GeoJSONs (all areas, not running) ────────────────────────
 
   const areaSegmentGeoJSON = useMemo(() => {
-    if (!activeArea || activeArea.segments.length === 0) return null;
-    const coloredSet = new Set(activeArea.coloredSegmentIds);
+    if (areas.length === 0) return null;
     const colored: GeoJSON.Feature<GeoJSON.LineString>[] = [];
     const uncolored: GeoJSON.Feature<GeoJSON.LineString>[] = [];
-    for (const seg of activeArea.segments) {
-      const feature = toLineGeoJSON(seg.coordinates);
-      if (coloredSet.has(seg.id)) colored.push(feature);
-      else uncolored.push(feature);
+    for (const area of areas) {
+      const coloredSet = new Set(area.coloredSegmentIds);
+      for (const seg of area.segments) {
+        const feature = toLineGeoJSON(seg.coordinates);
+        if (coloredSet.has(seg.id)) colored.push(feature);
+        else uncolored.push(feature);
+      }
     }
     return {
       colored: { type: 'FeatureCollection' as const, features: colored },
       uncolored: { type: 'FeatureCollection' as const, features: uncolored },
     };
-  }, [activeArea]);
+  }, [areas]);
+
+  // ── camera: zoom to active area when selection changes ───────────────────
+
+  useEffect(() => {
+    if (isRunning || !activeAreaId) return;
+    const area = areas.find((a) => a.id === activeAreaId);
+    if (!area) return;
+    const { center, radiusKm } = area;
+    const deltaLat = (radiusKm * 1.4) / 111;
+    const deltaLng = deltaLat / Math.cos((center.latitude * Math.PI) / 180);
+    cameraRef.current?.fitBounds(
+      [center.longitude + deltaLng, center.latitude + deltaLat],
+      [center.longitude - deltaLng, center.latitude - deltaLat],
+      [60, 60, 60, 60],
+      600,
+    );
+  }, [activeAreaId]);
 
   // ── history routes GeoJSON (not running) ─────────────────────────────────
 
@@ -312,15 +339,29 @@ export function MapDisplay({
           </MapboxGL.PointAnnotation>
         )}
 
-        {/* ── area boundary circle (not running) ── */}
-        {areaCircleGeoJSON && !isRunning && (
-          <MapboxGL.ShapeSource id="area-circle" shape={areaCircleGeoJSON}>
+        {/* ── other area circles (not running) ── */}
+        {otherCirclesGeoJSON && !isRunning && (
+          <MapboxGL.ShapeSource id="area-circles-other" shape={otherCirclesGeoJSON}>
             <MapboxGL.FillLayer
-              id="area-circle-fill"
+              id="area-circles-other-fill"
+              style={{ fillColor: '#FF6B6B', fillOpacity: 0.04 }}
+            />
+            <MapboxGL.LineLayer
+              id="area-circles-other-border"
+              style={{ lineColor: '#FF6B6B', lineWidth: 1.5, lineOpacity: 0.4, lineDasharray: [4, 3] }}
+            />
+          </MapboxGL.ShapeSource>
+        )}
+
+        {/* ── active area circle (not running) ── */}
+        {activeCircleGeoJSON && !isRunning && (
+          <MapboxGL.ShapeSource id="area-circle-active" shape={activeCircleGeoJSON}>
+            <MapboxGL.FillLayer
+              id="area-circle-active-fill"
               style={{ fillColor: '#FF6B6B', fillOpacity: 0.08 }}
             />
             <MapboxGL.LineLayer
-              id="area-circle-border"
+              id="area-circle-active-border"
               style={{ lineColor: '#FF6B6B', lineWidth: 2.5, lineOpacity: 0.9, lineDasharray: [4, 3] }}
             />
           </MapboxGL.ShapeSource>
