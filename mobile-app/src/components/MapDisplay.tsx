@@ -70,6 +70,7 @@ interface Props {
   onFollowResume?: () => void;
   nextWaypointIndex?: number;
   isMyWayMode?: boolean;
+  historyRoutes?: Coordinate[][];
 }
 
 export function MapDisplay({
@@ -85,6 +86,7 @@ export function MapDisplay({
   onFollowResume,
   nextWaypointIndex = 0,
   isMyWayMode = false,
+  historyRoutes = [],
 }: Props) {
   const center: [number, number] = [location.longitude, location.latitude];
   const cameraRef = useRef<MapboxGL.Camera>(null);
@@ -189,6 +191,18 @@ export function MapDisplay({
     ];
   }, [segments]);
 
+  // ── history routes GeoJSON (not running) ─────────────────────────────────
+
+  const historyGeoJSON: GeoJSON.FeatureCollection<GeoJSON.LineString> | null = useMemo(() => {
+    if (isRunning || historyRoutes.length === 0) return null;
+    return {
+      type: 'FeatureCollection',
+      features: historyRoutes
+        .filter((coords) => coords.length >= 2)
+        .map((coords) => toLineGeoJSON(coords)),
+    };
+  }, [historyRoutes, isRunning]);
+
   // ── static preview GeoJSON (not running) ─────────────────────────────────
 
   const previewGeoJSON: GeoJSON.Feature<GeoJSON.LineString> | null =
@@ -239,6 +253,16 @@ export function MapDisplay({
               <View style={styles.destinationInner} />
             </View>
           </MapboxGL.PointAnnotation>
+        )}
+
+        {/* ── history routes (not running) ── */}
+        {historyGeoJSON && (
+          <MapboxGL.ShapeSource id="history-routes" shape={historyGeoJSON}>
+            <MapboxGL.LineLayer
+              id="history-routes-line"
+              style={{ lineColor: '#4CAF50', lineWidth: 4, lineJoin: 'round', lineCap: 'round', lineOpacity: 0.85 }}
+            />
+          </MapboxGL.ShapeSource>
         )}
 
         {/* ── route: preview (not running) ── */}

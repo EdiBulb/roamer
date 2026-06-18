@@ -20,6 +20,7 @@ import { DifficultyPicker } from '../components/DifficultyPicker';
 import { DestinationPicker } from '../components/DestinationPicker';
 import { useSettings } from '../hooks/useSettings';
 import { useTutorial } from '../contexts/TutorialContext';
+import { useRunHistory } from '../hooks/useRunHistory';
 
 function segmentKm(a: Coordinate, b: Coordinate): number {
   const R = 6371;
@@ -43,6 +44,10 @@ function calcBearing(a: Coordinate, b: Coordinate): number {
 export function RunScreen() {
   const { advance, isActive } = useTutorial();
   const { settings } = useSettings();
+  const { history } = useRunHistory();
+  const historyRoutes = history
+    .filter((r) => r.routeCoordinates?.length >= 2)
+    .map((r) => r.routeCoordinates);
   const settingsRef = useRef(settings);
   useEffect(() => { settingsRef.current = settings; }, [settings]);
   const { location, loading: locationLoading, error: locationError } = useLocation();
@@ -473,6 +478,7 @@ export function RunScreen() {
             onFollowResume={() => setIsFollowMode(true)}
             nextWaypointIndex={nextWaypointIndex}
             isMyWayMode={isMyWayMode}
+            historyRoutes={historyRoutes}
           />
         )}
 {isRunning && isOffRoute && (
