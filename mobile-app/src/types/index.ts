@@ -1,6 +1,6 @@
 export type RouteMode = 'loop' | 'destination';
 export type Difficulty = 'easy' | 'normal' | 'hard';
-export type TargetDistance = 3 | 5 | 10;
+export type TargetDistance = 3 | 5 | 10 | 'free';
 
 export interface Coordinate {
   latitude: number;

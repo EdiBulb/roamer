@@ -101,6 +101,7 @@ export function RunScreen() {
   const onRouteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastDeviationVoiceRef = useRef<number>(0);
   const [coveredKm, setCoveredKm] = useState(0);
+  const [freeWalkTrace, setFreeWalkTrace] = useState<Coordinate[]>([]);
   const panelNaturalHeightRef = useRef(0);
   const slideY = useRef(new Animated.Value(0)).current;
   const slideStartRef = useRef(0);
@@ -284,6 +285,9 @@ export function RunScreen() {
         };
 
         setSimulatedLocation(coord);
+        if (selectedDistance === 'free') {
+          setFreeWalkTrace((prev) => [...prev, coord]);
+        }
 
         const nextWp = route.waypoints?.[nextWaypointIndexRef.current];
         if (nextWp && segmentKm(coord, nextWp) * 1000 < 30) {
@@ -419,6 +423,7 @@ export function RunScreen() {
     isOffRouteRef.current = false;
     isMyWayModeRef.current = false;
     cardSlideY.setValue(0);
+    setFreeWalkTrace(location ? [location] : []);
     setIsRunning(true);
   }
 
@@ -460,12 +465,17 @@ export function RunScreen() {
     isMyWayModeRef.current = false;
   }
 
-  if (isFinished && route) {
+  const freeWalkRoute: import('../types').RunRoute | null =
+    selectedDistance === 'free' && freeWalkTrace.length >= 2
+      ? { coordinates: freeWalkTrace, distanceKm: coveredKm, steps: [], streetNames: [], waypoints: [] }
+      : null;
+
+  if (isFinished && (route || freeWalkRoute)) {
     return (
       <RunSummaryScreen
         coveredKm={coveredKm}
         elapsedSeconds={elapsedSeconds}
-        route={route}
+        route={(route ?? freeWalkRoute)!}
         onHome={handleHome}
         activeArea={activeArea}
       />
@@ -642,10 +652,14 @@ export function RunScreen() {
             units={settings.units}
           />
 
-          {status === 'success' ? (
+          {selectedDistance === 'free' ? (
+            <TouchableOpacity style={styles.startRunButton} onPress={() => { handleStartRun(); if (isActive) advance(3); }} activeOpacity={0.8}>
+              <Text style={styles.startRunButtonText}>▶  Start Coloring</Text>
+            </TouchableOpacity>
+          ) : status === 'success' ? (
             <>
               <TouchableOpacity style={styles.startRunButton} onPress={() => { handleStartRun(); if (isActive) advance(3); }} activeOpacity={0.8}>
-                <Text style={styles.startRunButtonText}>▶  Start Run</Text>
+                <Text style={styles.startRunButtonText}>▶  Start Coloring</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.regenerateButton, isGenerating && styles.regenerateButtonDisabled]}

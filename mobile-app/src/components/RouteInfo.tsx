@@ -11,9 +11,11 @@ interface Props {
 
 export function RouteInfo({ status, distanceKm, targetKm, units }: Props) {
   const unitLabel = units === 'miles' ? 'mi' : 'km';
-  const targetDisplay = units === 'miles'
-    ? (targetKm * 0.621371).toFixed(1)
-    : String(targetKm);
+  const targetDisplay = targetKm === 'free'
+    ? 'free'
+    : units === 'miles'
+      ? (targetKm * 0.621371).toFixed(1)
+      : String(targetKm);
 
   if (status === 'idle') {
     return (

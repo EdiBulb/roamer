@@ -24,6 +24,15 @@ export function DistancePicker({ selected, onSelect }: Props) {
             </Text>
           </TouchableOpacity>
         ))}
+        <TouchableOpacity
+          style={[styles.button, styles.freeButton, selected === 'free' && styles.freeButtonSelected]}
+          onPress={() => onSelect('free')}
+          activeOpacity={0.8}
+        >
+          <Text style={[styles.buttonText, styles.freeButtonText, selected === 'free' && styles.freeButtonTextSelected]}>
+            Free
+          </Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -60,6 +69,18 @@ const styles = StyleSheet.create({
     color: '#4CAF50',
   },
   buttonTextSelected: {
+    color: '#fff',
+  },
+  freeButton: {
+    borderColor: '#FF6B6B',
+  },
+  freeButtonSelected: {
+    backgroundColor: '#FF6B6B',
+  },
+  freeButtonText: {
+    color: '#FF6B6B',
+  },
+  freeButtonTextSelected: {
     color: '#fff',
   },
 });

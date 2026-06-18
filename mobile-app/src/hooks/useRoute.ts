@@ -23,6 +23,7 @@ export function useRoute(
   const generate = useCallback(async () => {
     if (!origin) return;
     if (mode === 'destination' && !destination) return;
+    if (targetKm === 'free') return;
 
     setStatus('loading');
     setRoute(null);
