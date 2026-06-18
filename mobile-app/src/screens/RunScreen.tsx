@@ -58,11 +58,22 @@ export function RunScreen() {
   const [activeArea, setActiveArea] = useState<Area | null>(null);
   const [showCreateArea, setShowCreateArea] = useState(false);
   const [showMyAreas, setShowMyAreas] = useState(false);
+  const activeAreaIdRef = useRef<string | null>(null);
+
+  function selectArea(area: Area) {
+    setActiveArea(area);
+    activeAreaIdRef.current = area.id;
+  }
 
   useFocusEffect(useCallback(() => {
     loadAreas().then((loaded) => {
       setAreas(loaded);
-      if (loaded.length > 0 && !activeArea) setActiveArea(loaded[0]);
+      if (loaded.length === 0) { setActiveArea(null); return; }
+      const preferred = activeAreaIdRef.current
+        ? loaded.find((a) => a.id === activeAreaIdRef.current) ?? loaded[0]
+        : loaded[0];
+      setActiveArea(preferred);
+      activeAreaIdRef.current = preferred.id;
     });
   }, []));
   const settingsRef = useRef(settings);
@@ -522,7 +533,7 @@ export function RunScreen() {
           visible={showMyAreas}
           areas={areas}
           activeAreaId={activeArea?.id ?? null}
-          onSelect={(area) => setActiveArea(area)}
+          onSelect={(area) => selectArea(area)}
           onCreateNew={() => setShowCreateArea(true)}
           onClose={() => setShowMyAreas(false)}
           onRenamed={(id, newName) => {
@@ -532,7 +543,11 @@ export function RunScreen() {
           onDeleted={(id) => {
             setAreas((prev) => {
               const next = prev.filter((a) => a.id !== id);
-              setActiveArea((cur) => cur?.id === id ? (next[0] ?? null) : cur);
+              if (activeAreaIdRef.current === id) {
+                const fallback = next[0] ?? null;
+                setActiveArea(fallback);
+                activeAreaIdRef.current = fallback?.id ?? null;
+              }
               return next;
             });
           }}
@@ -544,7 +559,7 @@ export function RunScreen() {
           onClose={() => setShowCreateArea(false)}
           onCreated={(area) => {
             setAreas((prev) => [area, ...prev.filter((a) => a.id !== area.id)]);
-            setActiveArea(area);
+            selectArea(area);
             setShowCreateArea(false);
           }}
         />

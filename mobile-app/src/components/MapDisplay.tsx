@@ -238,13 +238,18 @@ export function MapDisplay({
     };
   }, [areas, activeAreaId]);
 
-  // ── area segment GeoJSONs (all areas, not running) ────────────────────────
+  // ── area segment GeoJSONs (not running) ──────────────────────────────────
+  // Active area selected → show only that area's segments (focused view)
+  // No active area → show all areas lightly
 
   const areaSegmentGeoJSON = useMemo(() => {
     if (areas.length === 0) return null;
+    const targetAreas = activeAreaId
+      ? areas.filter((a) => a.id === activeAreaId)
+      : areas;
     const colored: GeoJSON.Feature<GeoJSON.LineString>[] = [];
     const uncolored: GeoJSON.Feature<GeoJSON.LineString>[] = [];
-    for (const area of areas) {
+    for (const area of targetAreas) {
       const coloredSet = new Set(area.coloredSegmentIds);
       for (const seg of area.segments) {
         const feature = toLineGeoJSON(seg.coordinates);
@@ -256,7 +261,7 @@ export function MapDisplay({
       colored: { type: 'FeatureCollection' as const, features: colored },
       uncolored: { type: 'FeatureCollection' as const, features: uncolored },
     };
-  }, [areas]);
+  }, [areas, activeAreaId]);
 
   // ── camera: zoom to active area when selection changes ───────────────────
 
