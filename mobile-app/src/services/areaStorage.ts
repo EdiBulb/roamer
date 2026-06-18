@@ -28,6 +28,12 @@ export async function updateAreaColoredSegments(
   await AsyncStorage.setItem(AREAS_KEY, JSON.stringify(updated));
 }
 
+export async function renameArea(id: string, newName: string): Promise<void> {
+  const existing = await loadAreas();
+  const updated = existing.map((a) => a.id === id ? { ...a, name: newName } : a);
+  await AsyncStorage.setItem(AREAS_KEY, JSON.stringify(updated));
+}
+
 export async function deleteArea(id: string): Promise<void> {
   const existing = await loadAreas();
   await AsyncStorage.setItem(AREAS_KEY, JSON.stringify(existing.filter((a) => a.id !== id)));

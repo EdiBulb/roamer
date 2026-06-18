@@ -44,6 +44,36 @@ function sampleArrows(
   return result;
 }
 
+function makeCircleGeoJSON(
+  center: Coordinate,
+  radiusKm: number,
+  steps = 64,
+): GeoJSON.Feature<GeoJSON.Polygon> {
+  const R = 6371;
+  const lat = (center.latitude * Math.PI) / 180;
+  const lng = (center.longitude * Math.PI) / 180;
+  const d = radiusKm / R;
+  const ring: [number, number][] = [];
+  for (let i = 0; i <= steps; i++) {
+    const angle = (i / steps) * 2 * Math.PI;
+    const pLat = Math.asin(
+      Math.sin(lat) * Math.cos(d) + Math.cos(lat) * Math.sin(d) * Math.cos(angle),
+    );
+    const pLng =
+      lng +
+      Math.atan2(
+        Math.sin(angle) * Math.sin(d) * Math.cos(lat),
+        Math.cos(d) - Math.sin(lat) * Math.sin(pLat),
+      );
+    ring.push([(pLng * 180) / Math.PI, (pLat * 180) / Math.PI]);
+  }
+  return {
+    type: 'Feature',
+    properties: {},
+    geometry: { type: 'Polygon', coordinates: [ring] },
+  };
+}
+
 function toLineGeoJSON(coords: Coordinate[]): GeoJSON.Feature<GeoJSON.LineString> {
   return {
     type: 'Feature',
@@ -193,6 +223,13 @@ export function MapDisplay({
     ];
   }, [segments]);
 
+  // ── area boundary circle (not running) ───────────────────────────────────
+
+  const areaCircleGeoJSON = useMemo(() => {
+    if (!activeArea) return null;
+    return makeCircleGeoJSON(activeArea.center, activeArea.radiusKm);
+  }, [activeArea]);
+
   // ── area segment GeoJSONs (not running) ──────────────────────────────────
 
   const areaSegmentGeoJSON = useMemo(() => {
@@ -273,6 +310,20 @@ export function MapDisplay({
               <View style={styles.destinationInner} />
             </View>
           </MapboxGL.PointAnnotation>
+        )}
+
+        {/* ── area boundary circle (not running) ── */}
+        {areaCircleGeoJSON && !isRunning && (
+          <MapboxGL.ShapeSource id="area-circle" shape={areaCircleGeoJSON}>
+            <MapboxGL.FillLayer
+              id="area-circle-fill"
+              style={{ fillColor: '#FF6B6B', fillOpacity: 0.08 }}
+            />
+            <MapboxGL.LineLayer
+              id="area-circle-border"
+              style={{ lineColor: '#FF6B6B', lineWidth: 2.5, lineOpacity: 0.9, lineDasharray: [4, 3] }}
+            />
+          </MapboxGL.ShapeSource>
         )}
 
         {/* ── area segments (not running) ── */}

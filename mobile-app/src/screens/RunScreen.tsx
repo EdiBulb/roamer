@@ -22,6 +22,7 @@ import { useSettings } from '../hooks/useSettings';
 import { useTutorial } from '../contexts/TutorialContext';
 import { useRunHistory } from '../hooks/useRunHistory';
 import { CreateAreaModal } from '../components/CreateAreaModal';
+import { MyAreasSheet } from '../components/MyAreasSheet';
 import { loadAreas } from '../services/areaStorage';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback } from 'react';
@@ -56,6 +57,7 @@ export function RunScreen() {
   const [areas, setAreas] = useState<Area[]>([]);
   const [activeArea, setActiveArea] = useState<Area | null>(null);
   const [showCreateArea, setShowCreateArea] = useState(false);
+  const [showMyAreas, setShowMyAreas] = useState(false);
 
   useFocusEffect(useCallback(() => {
     loadAreas().then((loaded) => {
@@ -499,23 +501,41 @@ export function RunScreen() {
           />
         )}
 
-        {/* ── Area button (idle, not running) ── */}
+        {/* ── My Areas button (idle, not running) ── */}
         {!isRunning && displayLocation && (
           <TouchableOpacity
             style={styles.areaBtn}
-            onPress={() => setShowCreateArea(true)}
+            onPress={() => setShowMyAreas(true)}
             activeOpacity={0.85}
           >
-            <Text style={styles.areaBtnText}>
-              {activeArea ? `📍 ${activeArea.name}` : '＋ Create Area'}
-            </Text>
+            <Text style={styles.areaBtnText}>My Areas</Text>
             {activeArea && (
               <Text style={styles.areaBtnSub}>
-                {Math.round((activeArea.coloredSegmentIds.length / Math.max(activeArea.segments.length, 1)) * 100)}% explored
+                {activeArea.name} · {Math.round((activeArea.coloredSegmentIds.length / Math.max(activeArea.segments.length, 1)) * 100)}% explored
               </Text>
             )}
           </TouchableOpacity>
         )}
+
+        <MyAreasSheet
+          visible={showMyAreas}
+          areas={areas}
+          activeAreaId={activeArea?.id ?? null}
+          onSelect={(area) => setActiveArea(area)}
+          onCreateNew={() => setShowCreateArea(true)}
+          onClose={() => setShowMyAreas(false)}
+          onRenamed={(id, newName) => {
+            setAreas((prev) => prev.map((a) => a.id === id ? { ...a, name: newName } : a));
+            setActiveArea((prev) => prev?.id === id ? { ...prev, name: newName } : prev);
+          }}
+          onDeleted={(id) => {
+            setAreas((prev) => {
+              const next = prev.filter((a) => a.id !== id);
+              setActiveArea((cur) => cur?.id === id ? (next[0] ?? null) : cur);
+              return next;
+            });
+          }}
+        />
 
         <CreateAreaModal
           visible={showCreateArea}

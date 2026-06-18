@@ -43,7 +43,8 @@ export function CreateAreaModal({ visible, location, onClose, onCreated }: Props
       setStatus('idle');
       setName('');
       onCreated(area);
-    } catch {
+    } catch (e) {
+      console.error('[CreateArea] fetch failed:', e);
       setStatus('error');
     }
   }

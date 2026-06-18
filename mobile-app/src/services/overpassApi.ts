@@ -1,12 +1,14 @@
 import { Coordinate, RoadSegment } from '../types';
 
-const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
+const OVERPASS_ENDPOINTS = [
+  'https://overpass.kumi.systems/api/interpreter',
+  'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
+  'https://overpass-api.de/api/interpreter',
+];
 
-// Road types suitable for walking/running
 const WALKABLE_HIGHWAY = [
   'residential', 'living_street', 'pedestrian', 'footway',
-  'path', 'cycleway', 'service', 'tertiary', 'secondary',
-  'primary', 'unclassified', 'track',
+  'path', 'tertiary', 'secondary', 'primary', 'unclassified',
 ];
 
 export async function fetchSegmentsInArea(
@@ -20,37 +22,50 @@ export async function fetchSegmentsInArea(
     out geom;
   `;
 
-  const res = await fetch(OVERPASS_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: `data=${encodeURIComponent(query)}`,
-  });
+  const fetchWithTimeout = (url: string, timeoutMs: number) =>
+    Promise.race([
+      fetch(`${url}?data=${encodeURIComponent(query)}`, { method: 'GET' }),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error(`Timeout after ${timeoutMs}ms`)), timeoutMs),
+      ),
+    ]);
 
-  if (!res.ok) throw new Error(`Overpass error: ${res.status}`);
+  let lastError: unknown;
+  for (const url of OVERPASS_ENDPOINTS) {
+    try {
+      console.log(`[Overpass] Trying ${url}`);
+      const res = await fetchWithTimeout(url, 10000);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
 
-  const json = await res.json();
+      const segments: RoadSegment[] = (json.elements ?? [])
+        .filter((el: any) => el.type === 'way' && el.geometry?.length >= 2)
+        .map((el: any) => ({
+          id: String(el.id),
+          coordinates: el.geometry.map((pt: any) => ({
+            latitude: pt.lat,
+            longitude: pt.lon,
+          })),
+        }));
 
-  const segments: RoadSegment[] = (json.elements ?? [])
-    .filter((el: any) => el.type === 'way' && el.geometry?.length >= 2)
-    .map((el: any) => ({
-      id: String(el.id),
-      coordinates: el.geometry.map((pt: any) => ({
-        latitude: pt.lat,
-        longitude: pt.lon,
-      })),
-    }));
+      console.log(`[Overpass] Success: ${segments.length} segments from ${url}`);
+      return segments;
+    } catch (e) {
+      console.warn(`[Overpass] Failed ${url}:`, e);
+      lastError = e;
+    }
+  }
 
-  return segments;
+  throw lastError ?? new Error('All Overpass endpoints failed');
 }
 
-// Check if a GPS point is within distance (meters) of a segment
 function pointToSegmentDistanceM(
   point: Coordinate,
   segA: Coordinate,
   segB: Coordinate,
 ): number {
   const R = 6371000;
-  const toRad = (d: number) => (d * Math.PI) / 180;
+  const toRad = (d: number): number => (d * Math.PI) / 180;
 
   const lat1 = toRad(segA.latitude);
   const lon1 = toRad(segA.longitude);
@@ -59,7 +74,6 @@ function pointToSegmentDistanceM(
   const lat0 = toRad(point.latitude);
   const lon0 = toRad(point.longitude);
 
-  // Project point onto segment, clamp to [0,1]
   const dx = lon2 - lon1;
   const dy = lat2 - lat1;
   const len2 = dx * dx + dy * dy;
@@ -74,7 +88,6 @@ function pointToSegmentDistanceM(
   return Math.sqrt(dLat * dLat + dLon * dLon) * R;
 }
 
-// Returns segment IDs that the GPS trace passed through (within 15m tolerance)
 export function matchTraceToSegments(
   trace: Coordinate[],
   segments: RoadSegment[],
