@@ -23,6 +23,7 @@ import { useTutorial } from '../contexts/TutorialContext';
 import { useRunHistory } from '../hooks/useRunHistory';
 import { CreateAreaModal } from '../components/CreateAreaModal';
 import { MyAreasSheet } from '../components/MyAreasSheet';
+import { FollowMode } from '../components/MapDisplay';
 import { loadAreas } from '../services/areaStorage';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback } from 'react';
@@ -87,7 +88,7 @@ export function RunScreen() {
   const [isRunning, setIsRunning] = useState(false);
   const [isFinished, setIsFinished] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
-  const [isFollowMode, setIsFollowMode] = useState(true);
+  const [followMode, setFollowMode] = useState<FollowMode>('follow');
   const [nextWaypointIndex, setNextWaypointIndex] = useState(0);
   const [isOffRoute, setIsOffRoute] = useState(false);
   const [isMyWayMode, setIsMyWayMode] = useState(false);
@@ -413,7 +414,7 @@ export function RunScreen() {
     setSimulatedLocation(location);
     setIsPaused(false);
     slideY.setValue(0);
-    setIsFollowMode(true);
+    setFollowMode('follow');
     nextWaypointIndexRef.current = 0;
     setNextWaypointIndex(0);
     finishCoordRef.current = routeMode === 'loop' ? location : destination;
@@ -512,9 +513,9 @@ export function RunScreen() {
             destinationPickerActive={routeMode === 'destination' && !isRunning}
             destination={destination}
             onMapPress={(coord) => setDestination(coord)}
-            isFollowMode={isFollowMode}
-            onUserDrag={() => setIsFollowMode(false)}
-            onFollowResume={() => setIsFollowMode(true)}
+            followMode={followMode}
+            onUserDrag={() => setFollowMode('free')}
+            onFollowModeChange={setFollowMode}
             nextWaypointIndex={nextWaypointIndex}
             isMyWayMode={isMyWayMode}
             historyRoutes={historyRoutes}

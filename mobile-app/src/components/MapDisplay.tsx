@@ -5,6 +5,7 @@ import { Magnetometer } from 'expo-sensors';
 import { MAPBOX_TOKEN, DEFAULT_ZOOM } from '../constants';
 import { getBoundingBox } from '../services/mapboxApi';
 import { Area, Coordinate, RunRoute } from '../types';
+import { ExplorerPainterMarker } from './ExplorerPainterMarker';
 
 MapboxGL.setAccessToken(MAPBOX_TOKEN);
 
@@ -87,6 +88,8 @@ function toLineGeoJSON(coords: Coordinate[]): GeoJSON.Feature<GeoJSON.LineString
 
 // ── component ─────────────────────────────────────────────────────────────────
 
+export type FollowMode = 'free' | 'follow' | 'north';
+
 interface Props {
   location: Coordinate;
   route: RunRoute | null;
@@ -95,9 +98,9 @@ interface Props {
   destinationPickerActive?: boolean;
   destination?: Coordinate | null;
   onMapPress?: (coord: Coordinate) => void;
-  isFollowMode?: boolean;
+  followMode?: FollowMode;
   onUserDrag?: () => void;
-  onFollowResume?: () => void;
+  onFollowModeChange?: (mode: FollowMode) => void;
   nextWaypointIndex?: number;
   isMyWayMode?: boolean;
   historyRoutes?: Coordinate[][];
@@ -113,9 +116,9 @@ export function MapDisplay({
   destinationPickerActive = false,
   destination = null,
   onMapPress,
-  isFollowMode = true,
+  followMode = 'follow',
   onUserDrag,
-  onFollowResume,
+  onFollowModeChange,
   nextWaypointIndex = 0,
   isMyWayMode = false,
   historyRoutes = [],
@@ -151,18 +154,18 @@ export function MapDisplay({
     return () => loop.stop();
   }, []);
 
-  // Running: follow user with tilt
+  // Running: follow user
   useEffect(() => {
-    if (!isRunning || !isFollowMode) return;
+    if (!isRunning || followMode === 'free') return;
     cameraRef.current?.setCamera({
       centerCoordinate: [location.longitude, location.latitude],
       zoomLevel: 18,
-      heading: bearing,
-      pitch: 45,
+      heading: followMode === 'north' ? 0 : bearing,
+      pitch: followMode === 'north' ? 0 : 45,
       animationDuration: 400,
       animationMode: 'easeTo',
     });
-  }, [location, bearing, isFollowMode, isRunning]);
+  }, [location, bearing, followMode, isRunning]);
 
   // Route generated: fit all coordinates
   useEffect(() => {
@@ -505,38 +508,45 @@ export function MapDisplay({
       {/* ── follow button ── */}
       {isRunning && (
         <TouchableOpacity
-          style={[styles.followButton, isFollowMode ? styles.followButtonActive : styles.followButtonInactive]}
-          onPress={onFollowResume}
+          style={[styles.followButton, followMode !== 'free' ? styles.followButtonActive : styles.followButtonInactive]}
+          onPress={() => {
+            const next: FollowMode = followMode === 'free' ? 'follow' : followMode === 'follow' ? 'north' : 'follow';
+            onFollowModeChange?.(next);
+          }}
           activeOpacity={0.8}
         >
-          <Image
-            source={
-              isFollowMode
-                ? require('../../assets/icons/follow-active.png')
-                : require('../../assets/icons/follow-inactive.png')
-            }
-            style={styles.followIcon}
-            resizeMode="contain"
-          />
+          {followMode === 'north' ? (
+            <View style={styles.northButton}>
+              <Text style={styles.northButtonText}>N↑</Text>
+            </View>
+          ) : (
+            <Image
+              source={
+                followMode === 'follow'
+                  ? require('../../assets/icons/follow-active.png')
+                  : require('../../assets/icons/follow-inactive.png')
+              }
+              style={styles.followIcon}
+              resizeMode="contain"
+            />
+          )}
         </TouchableOpacity>
       )}
 
-      {/* ── user arrow overlay at GPS screen position ── */}
+      {/* ── ExplorerPainterMarker at GPS screen position ── */}
       {arrowPos && (
         <View
           pointerEvents="none"
-          style={[
-            styles.arrowWrapper,
-            {
-              position: 'absolute',
-              left: arrowPos.x - 14,
-              top: arrowPos.y - 14,
-              transform: [{ rotate: `${compassHeading - mapHeading}deg` }],
-            },
-          ]}
+          style={{
+            position: 'absolute',
+            left: arrowPos.x - 27, // 54/2 = 27 — center marker on GPS point
+            top: arrowPos.y - 27,
+          }}
         >
-          <View style={styles.arrowOuter} />
-          <View style={styles.arrowInner} />
+          <ExplorerPainterMarker
+            heading={compassHeading - mapHeading}
+            isActive={isRunning}
+          />
         </View>
       )}
 
@@ -554,37 +564,6 @@ export function MapDisplay({
 const styles = StyleSheet.create({
   container: { flex: 1, width: '100%' },
   map: { flex: 1 },
-  arrowWrapper: {
-    width: 28,
-    height: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  arrowOuter: {
-    position: 'absolute',
-    width: 0,
-    height: 0,
-    borderLeftWidth: 10,
-    borderRightWidth: 10,
-    borderBottomWidth: 24,
-    borderStyle: 'solid',
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
-    borderBottomColor: '#fff',
-  },
-  arrowInner: {
-    position: 'absolute',
-    width: 0,
-    height: 0,
-    borderLeftWidth: 7,
-    borderRightWidth: 7,
-    borderBottomWidth: 18,
-    borderStyle: 'solid',
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
-    borderBottomColor: '#4285F4',
-    marginTop: 3,
-  },
   arrowMarkerWrapper: {
     width: 14,
     height: 14,
@@ -662,6 +641,15 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   tapHintText: { color: '#fff', fontSize: 13, fontWeight: '600' },
+  northButton: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  northButtonText: { fontSize: 16, fontWeight: '800', color: '#4285F4' },
   centeredArrow: {
     position: 'absolute',
     top: 0, left: 0, right: 0, bottom: 0,
