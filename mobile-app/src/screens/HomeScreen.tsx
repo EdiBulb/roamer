@@ -7,6 +7,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { RunCard } from '../components/RunCard';
 import { useRunHistory } from '../hooks/useRunHistory';
 import { RunRecord } from '../types';
+import { recalculateAreaColoredSegments } from '../services/areaStorage';
 
 export function HomeScreen() {
   const { history, loading, refresh, removeRecord, renameRecord } = useRunHistory();
@@ -30,7 +31,12 @@ export function HomeScreen() {
         onPress: () => {
           Alert.alert('Delete run?', `"${record.name}" will be permanently deleted.`, [
             { text: 'Cancel', style: 'cancel' },
-            { text: 'Delete', style: 'destructive', onPress: () => removeRecord(record.id) },
+            {
+              text: 'Delete', style: 'destructive', onPress: async () => {
+                await removeRecord(record.id);
+                if (record.areaId) await recalculateAreaColoredSegments(record.areaId);
+              },
+            },
           ]);
         },
       },

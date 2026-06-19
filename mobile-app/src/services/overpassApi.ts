@@ -1,5 +1,27 @@
 import { Coordinate, RoadSegment } from '../types';
 
+function distanceKm(a: Coordinate, b: Coordinate): number {
+  const R = 6371;
+  const dLat = ((b.latitude - a.latitude) * Math.PI) / 180;
+  const dLon = ((b.longitude - a.longitude) * Math.PI) / 180;
+  const lat1 = (a.latitude * Math.PI) / 180;
+  const lat2 = (b.latitude * Math.PI) / 180;
+  const x = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.asin(Math.sqrt(x));
+}
+
+function clipSegmentToCircle(
+  segment: RoadSegment,
+  center: Coordinate,
+  radiusKm: number,
+): RoadSegment | null {
+  const clipped = segment.coordinates.filter(
+    (coord) => distanceKm(coord, center) <= radiusKm,
+  );
+  if (clipped.length < 2) return null;
+  return { ...segment, coordinates: clipped };
+}
+
 const OVERPASS_ENDPOINTS = [
   'https://overpass.kumi.systems/api/interpreter',
   'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
@@ -38,15 +60,21 @@ export async function fetchSegmentsInArea(
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
 
+      const radiusKm = radiusM / 1000;
       const segments: RoadSegment[] = (json.elements ?? [])
         .filter((el: any) => el.type === 'way' && el.geometry?.length >= 2)
-        .map((el: any) => ({
-          id: String(el.id),
-          coordinates: el.geometry.map((pt: any) => ({
-            latitude: pt.lat,
-            longitude: pt.lon,
-          })),
-        }));
+        .map((el: any) => clipSegmentToCircle(
+          {
+            id: String(el.id),
+            coordinates: el.geometry.map((pt: any) => ({
+              latitude: pt.lat,
+              longitude: pt.lon,
+            })),
+          },
+          center,
+          radiusKm,
+        ))
+        .filter((seg: RoadSegment | null): seg is RoadSegment => seg !== null);
 
       console.log(`[Overpass] Success: ${segments.length} segments from ${url}`);
       return segments;

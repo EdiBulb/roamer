@@ -50,7 +50,7 @@ function calcBearing(a: Coordinate, b: Coordinate): number {
 export function RunScreen() {
   const { advance, isActive } = useTutorial();
   const { settings } = useSettings();
-  const { history } = useRunHistory();
+  const { history, refresh: refreshHistory } = useRunHistory();
   const historyRoutes = history
     .filter((r) => r.routeCoordinates?.length >= 2)
     .map((r) => r.routeCoordinates);
@@ -67,6 +67,7 @@ export function RunScreen() {
   }
 
   useFocusEffect(useCallback(() => {
+    refreshHistory();
     loadAreas().then((loaded) => {
       setAreas(loaded);
       if (loaded.length === 0) { setActiveArea(null); return; }
@@ -103,6 +104,11 @@ export function RunScreen() {
   const lastDeviationVoiceRef = useRef<number>(0);
   const [coveredKm, setCoveredKm] = useState(0);
   const [freeWalkTrace, setFreeWalkTrace] = useState<Coordinate[]>([]);
+  const [gpsTrace, setGpsTrace] = useState<Coordinate[]>([]);
+  const [liveColoredIds, setLiveColoredIds] = useState<Set<string>>(new Set());
+  const activeAreaRef = useRef<Area | null>(null);
+  const segmentHitCountRef = useRef<Map<string, number>>(new Map());
+  useEffect(() => { activeAreaRef.current = activeArea; }, [activeArea]);
   const panelNaturalHeightRef = useRef(0);
   const slideY = useRef(new Animated.Value(0)).current;
   const slideStartRef = useRef(0);
@@ -275,7 +281,7 @@ export function RunScreen() {
       {
         accuracy: Location.Accuracy.BestForNavigation,
         timeInterval: 2000,
-        distanceInterval: 3,
+        distanceInterval: 0,
       },
       (pos) => {
         if (isPausedRef.current || cancelled) return;
@@ -286,8 +292,35 @@ export function RunScreen() {
         };
 
         setSimulatedLocation(coord);
+        setGpsTrace((prev) => [...prev, coord]);
         if (selectedDistance === 'free') {
           setFreeWalkTrace((prev) => [...prev, coord]);
+        }
+
+        // Real-time segment coloring (min 2 hits to avoid intersection false positives)
+        const area = activeAreaRef.current;
+        if (area && area.segments.length > 0) {
+          const THRESHOLD_KM = 0.010;
+          const MIN_HITS = 2;
+          const newlyColored: string[] = [];
+          for (const seg of area.segments) {
+            let hit = false;
+            for (const segCoord of seg.coordinates) {
+              if (segmentKm(coord, segCoord) <= THRESHOLD_KM) { hit = true; break; }
+            }
+            if (hit) {
+              const count = (segmentHitCountRef.current.get(seg.id) ?? 0) + 1;
+              segmentHitCountRef.current.set(seg.id, count);
+              if (count === MIN_HITS) newlyColored.push(seg.id);
+            }
+          }
+          if (newlyColored.length > 0) {
+            setLiveColoredIds((prev) => {
+              const next = new Set(prev);
+              newlyColored.forEach((id) => next.add(id));
+              return next;
+            });
+          }
         }
 
         const nextWp = route.waypoints?.[nextWaypointIndexRef.current];
@@ -425,6 +458,9 @@ export function RunScreen() {
     isMyWayModeRef.current = false;
     cardSlideY.setValue(0);
     setFreeWalkTrace(location ? [location] : []);
+    setGpsTrace(location ? [location] : []);
+    setLiveColoredIds(new Set());
+    segmentHitCountRef.current = new Map();
     setIsRunning(true);
   }
 
@@ -479,6 +515,8 @@ export function RunScreen() {
         route={(route ?? freeWalkRoute)!}
         onHome={handleHome}
         activeArea={activeArea}
+        gpsTrace={gpsTrace}
+        liveColoredIds={liveColoredIds}
       />
     );
   }
@@ -521,6 +559,7 @@ export function RunScreen() {
             historyRoutes={historyRoutes}
             areas={areas}
             activeAreaId={activeArea?.id ?? null}
+            liveColoredIds={liveColoredIds}
           />
         )}
 

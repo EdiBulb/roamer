@@ -32,7 +32,10 @@ export interface RunRecord {
   elapsedSeconds: number;
   routeCoordinates: Coordinate[];
   newStreets: string[];
-  newStreetSegments?: Coordinate[][];  // per-step coordinate arrays for new streets
+  newStreetSegments?: Coordinate[][];
+  gpsTrace?: Coordinate[];
+  areaId?: string;
+  coloredSegmentIds?: string[];
 }
 
 export interface RoadSegment {

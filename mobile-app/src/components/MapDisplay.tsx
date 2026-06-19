@@ -106,6 +106,7 @@ interface Props {
   historyRoutes?: Coordinate[][];
   areas?: Area[];
   activeAreaId?: string | null;
+  liveColoredIds?: Set<string>;
 }
 
 export function MapDisplay({
@@ -124,6 +125,7 @@ export function MapDisplay({
   historyRoutes = [],
   areas = [],
   activeAreaId = null,
+  liveColoredIds,
 }: Props) {
   const center: [number, number] = [location.longitude, location.latitude];
   const cameraRef = useRef<MapboxGL.Camera>(null);
@@ -247,24 +249,33 @@ export function MapDisplay({
 
   const areaSegmentGeoJSON = useMemo(() => {
     if (areas.length === 0) return null;
+    // During run: only show active area. Not running: show active or all.
     const targetAreas = activeAreaId
       ? areas.filter((a) => a.id === activeAreaId)
-      : areas;
-    const colored: GeoJSON.Feature<GeoJSON.LineString>[] = [];
+      : isRunning ? [] : areas;
+    if (targetAreas.length === 0) return null;
+    const existing: GeoJSON.Feature<GeoJSON.LineString>[] = [];
+    const fresh: GeoJSON.Feature<GeoJSON.LineString>[] = [];
     const uncolored: GeoJSON.Feature<GeoJSON.LineString>[] = [];
     for (const area of targetAreas) {
       const coloredSet = new Set(area.coloredSegmentIds);
       for (const seg of area.segments) {
         const feature = toLineGeoJSON(seg.coordinates);
-        if (coloredSet.has(seg.id)) colored.push(feature);
-        else uncolored.push(feature);
+        if (coloredSet.has(seg.id)) {
+          existing.push(feature);
+        } else if (liveColoredIds?.has(seg.id)) {
+          fresh.push(feature);
+        } else {
+          uncolored.push(feature);
+        }
       }
     }
     return {
-      colored: { type: 'FeatureCollection' as const, features: colored },
+      existing: { type: 'FeatureCollection' as const, features: existing },
+      fresh: { type: 'FeatureCollection' as const, features: fresh },
       uncolored: { type: 'FeatureCollection' as const, features: uncolored },
     };
-  }, [areas, activeAreaId]);
+  }, [areas, activeAreaId, isRunning, liveColoredIds]);
 
   // ── camera: zoom to active area when selection changes ───────────────────
 
@@ -375,8 +386,8 @@ export function MapDisplay({
           </MapboxGL.ShapeSource>
         )}
 
-        {/* ── area segments (not running) ── */}
-        {areaSegmentGeoJSON && !isRunning && (
+        {/* ── area segments (running + not running) ── */}
+        {areaSegmentGeoJSON && (
           <>
             <MapboxGL.ShapeSource id="area-uncolored" shape={areaSegmentGeoJSON.uncolored}>
               <MapboxGL.LineLayer
@@ -384,10 +395,16 @@ export function MapDisplay({
                 style={{ lineColor: '#E0E0E0', lineWidth: 3, lineJoin: 'round', lineCap: 'round', lineOpacity: 0.8 }}
               />
             </MapboxGL.ShapeSource>
-            <MapboxGL.ShapeSource id="area-colored" shape={areaSegmentGeoJSON.colored}>
+            <MapboxGL.ShapeSource id="area-existing" shape={areaSegmentGeoJSON.existing}>
               <MapboxGL.LineLayer
-                id="area-colored-line"
+                id="area-existing-line"
                 style={{ lineColor: '#4CAF50', lineWidth: 4, lineJoin: 'round', lineCap: 'round', lineOpacity: 0.9 }}
+              />
+            </MapboxGL.ShapeSource>
+            <MapboxGL.ShapeSource id="area-fresh" shape={areaSegmentGeoJSON.fresh}>
+              <MapboxGL.LineLayer
+                id="area-fresh-line"
+                style={{ lineColor: '#FF6B6B', lineWidth: 4, lineJoin: 'round', lineCap: 'round', lineOpacity: 1 }}
               />
             </MapboxGL.ShapeSource>
           </>

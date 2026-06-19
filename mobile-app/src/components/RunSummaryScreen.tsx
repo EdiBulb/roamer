@@ -18,6 +18,8 @@ interface Props {
   route: RunRoute;
   onHome: () => void;
   activeArea?: Area | null;
+  gpsTrace?: Coordinate[];
+  liveColoredIds?: Set<string>;
 }
 
 function formatTime(seconds: number): string {
@@ -52,7 +54,7 @@ function getBoundingBox(coordinates: Coordinate[]) {
   };
 }
 
-export function RunSummaryScreen({ coveredKm, elapsedSeconds, route, onHome, activeArea }: Props) {
+export function RunSummaryScreen({ coveredKm, elapsedSeconds, route, onHome, activeArea, gpsTrace, liveColoredIds }: Props) {
   const runNameRef = useRef(defaultRunName());
   const navigation = useNavigation();
   const [newBadges, setNewBadges] = useState<Badge[]>([]);
@@ -101,6 +103,9 @@ export function RunSummaryScreen({ coveredKm, elapsedSeconds, route, onHome, act
       .filter(s => s.streetName && newStreetsSet.has(s.streetName) && s.coordinates.length > 0)
       .map(s => s.coordinates);
 
+    const trace = gpsTrace && gpsTrace.length >= 2 ? gpsTrace : null;
+    console.log(`[Save] gpsTrace points: ${gpsTrace?.length ?? 0}, liveColoredIds: ${liveColoredIds?.size ?? 0}`);
+
     const record: RunRecord = {
       id: String(Date.now()),
       name: runNameRef.current.trim() || defaultRunName(),
@@ -110,13 +115,19 @@ export function RunSummaryScreen({ coveredKm, elapsedSeconds, route, onHome, act
       routeCoordinates: route.coordinates,
       newStreets,
       newStreetSegments: newStreetSegments.length > 0 ? newStreetSegments : undefined,
+      gpsTrace: trace ?? undefined,
+      areaId: activeArea?.id,
     };
-    await saveRunRecord(record);
 
+    let mergedColoredIds: string[] = [];
     if (activeArea && activeArea.segments.length > 0) {
-      const matched = matchTraceToSegments(route.coordinates, activeArea.segments);
-      if (matched.length > 0) await updateAreaColoredSegments(activeArea.id, matched);
+      const matched = trace ? matchTraceToSegments(trace, activeArea.segments) : [];
+      mergedColoredIds = Array.from(new Set([...matched, ...(liveColoredIds ?? [])]));
+      console.log(`[Save] matched: ${matched.length}, live: ${liveColoredIds?.size ?? 0}, merged: ${mergedColoredIds.length} / ${activeArea.segments.length}`);
+      if (mergedColoredIds.length > 0) await updateAreaColoredSegments(activeArea.id, mergedColoredIds);
     }
+
+    await saveRunRecord({ ...record, coloredSegmentIds: mergedColoredIds });
 
     setNewStreetCount(newStreets.length);
     setSavedNewStreets(newStreets);
