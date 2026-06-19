@@ -8,7 +8,7 @@ function coordsToStr(coords: Coordinate[]): string {
 
 interface Props {
   record: RunRecord;
-  onLongPress?: () => void;
+  onPress?: () => void;
 }
 
 function formatTime(seconds: number): string {
@@ -61,11 +61,11 @@ function buildStaticMapUrl(coordinates: Coordinate[], newStreetSegments?: Coordi
   return `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/${overlays}/auto/400x220@2x?padding=40&access_token=${MAPBOX_TOKEN}`;
 }
 
-export function RunCard({ record, onLongPress }: Props) {
+export function RunCard({ record, onPress }: Props) {
   const mapUrl = buildStaticMapUrl(record.routeCoordinates, record.newStreetSegments);
 
   return (
-    <TouchableOpacity style={styles.card} onLongPress={onLongPress} activeOpacity={0.92} delayLongPress={400}>
+    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.92}>
       <Image
         source={mapUrl ? { uri: mapUrl } : undefined}
         style={styles.map}

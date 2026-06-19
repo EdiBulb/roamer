@@ -520,6 +520,19 @@ export function MapDisplay({
             </View>
           </MapboxGL.PointAnnotation>
         )}
+
+        {/* ── conquered area flags ── */}
+        {areas.filter(a => a.conquered).map(a => (
+          <MapboxGL.PointAnnotation
+            key={`flag-${a.id}`}
+            id={`flag-${a.id}`}
+            coordinate={[a.center.longitude, a.center.latitude]}
+          >
+            <View style={styles.flagMarker}>
+              <Text style={styles.flagMarkerText}>🚩</Text>
+            </View>
+          </MapboxGL.PointAnnotation>
+        ))}
       </MapboxGL.MapView>
 
       {/* ── follow button ── */}
@@ -681,4 +694,6 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#fff',
   },
+  flagMarker: { alignItems: 'center', justifyContent: 'center' },
+  flagMarkerText: { fontSize: 28 },
 });

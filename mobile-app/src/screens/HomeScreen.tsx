@@ -1,54 +1,34 @@
 import { useCallback, useState } from 'react';
-import {
-  ActivityIndicator, Alert, FlatList, Modal,
-  StyleSheet, Text, TextInput, TouchableOpacity, View,
-} from 'react-native';
+import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { RunCard } from '../components/RunCard';
+import { RunDetailModal } from '../components/RunDetailModal';
 import { useRunHistory } from '../hooks/useRunHistory';
 import { RunRecord } from '../types';
 import { recalculateAreaColoredSegments } from '../services/areaStorage';
 
 export function HomeScreen() {
   const { history, loading, refresh, removeRecord, renameRecord } = useRunHistory();
-  const [editingRecord, setEditingRecord] = useState<RunRecord | null>(null);
-  const [editName, setEditName] = useState('');
+  const [detailRecord, setDetailRecord] = useState<RunRecord | null>(null);
 
   useFocusEffect(useCallback(() => { refresh(); }, [refresh]));
 
-  function handleLongPress(record: RunRecord) {
-    Alert.alert(record.name, 'What would you like to do?', [
-      {
-        text: 'Rename',
-        onPress: () => {
-          setEditName(record.name);
-          setEditingRecord(record);
-        },
-      },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: () => {
-          Alert.alert('Delete run?', `"${record.name}" will be permanently deleted.`, [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Delete', style: 'destructive', onPress: async () => {
-                await removeRecord(record.id);
-                if (record.areaId) await recalculateAreaColoredSegments(record.areaId);
-              },
-            },
-          ]);
-        },
-      },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
+  function handleMemoSaved(id: string, memo: string) {
+    refresh();
+    if (detailRecord?.id === id) setDetailRecord({ ...detailRecord, memo });
   }
 
-  async function handleRenameConfirm() {
-    if (!editingRecord) return;
-    const trimmed = editName.trim();
-    if (trimmed) await renameRecord(editingRecord.id, trimmed);
-    setEditingRecord(null);
+  async function handleRename(id: string, name: string) {
+    await renameRecord(id, name);
+    refresh();
+    if (detailRecord?.id === id) setDetailRecord({ ...detailRecord, name });
+  }
+
+  async function handleDelete(id: string) {
+    const record = history.find(r => r.id === id);
+    await removeRecord(id);
+    if (record?.areaId) await recalculateAreaColoredSegments(record.areaId);
+    refresh();
   }
 
   if (loading) {
@@ -79,44 +59,22 @@ export function HomeScreen() {
           data={history}
           keyExtractor={(item: RunRecord) => item.id}
           renderItem={({ item }) => (
-            <RunCard record={item} onLongPress={() => handleLongPress(item)} />
+            <RunCard record={item} onPress={() => setDetailRecord(item)} />
           )}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
         />
       )}
 
-      {/* Rename modal */}
-      <Modal visible={!!editingRecord} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Rename Run</Text>
-            <TextInput
-              style={styles.modalInput}
-              value={editName}
-              onChangeText={setEditName}
-              autoFocus
-              selectTextOnFocus
-              returnKeyType="done"
-              onSubmitEditing={handleRenameConfirm}
-            />
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={styles.modalCancel}
-                onPress={() => setEditingRecord(null)}
-              >
-                <Text style={styles.modalCancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.modalSave}
-                onPress={handleRenameConfirm}
-              >
-                <Text style={styles.modalSaveText}>Save</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      {detailRecord && (
+        <RunDetailModal
+          record={detailRecord}
+          onClose={() => setDetailRecord(null)}
+          onMemoSaved={handleMemoSaved}
+          onRename={handleRename}
+          onDelete={handleDelete}
+        />
+      )}
     </View>
   );
 }
@@ -139,45 +97,4 @@ const styles = StyleSheet.create({
   emptyEmoji: { fontSize: 56 },
   emptyTitle: { fontSize: 20, fontWeight: '700', color: '#1A1A1A' },
   emptySubtitle: { fontSize: 14, color: '#BDBDBD', textAlign: 'center', paddingHorizontal: 40 },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 32,
-  },
-  modalCard: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 24,
-    width: '100%',
-    gap: 16,
-  },
-  modalTitle: { fontSize: 18, fontWeight: '700', color: '#1A1A1A', textAlign: 'center' },
-  modalInput: {
-    borderWidth: 1.5,
-    borderColor: '#4CAF50',
-    borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    fontSize: 16,
-    color: '#1A1A1A',
-  },
-  modalButtons: { flexDirection: 'row', gap: 12 },
-  modalCancel: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 10,
-    backgroundColor: '#F5F5F5',
-    alignItems: 'center',
-  },
-  modalCancelText: { fontSize: 15, fontWeight: '600', color: '#888' },
-  modalSave: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 10,
-    backgroundColor: '#4CAF50',
-    alignItems: 'center',
-  },
-  modalSaveText: { fontSize: 15, fontWeight: '700', color: '#fff' },
 });

@@ -14,9 +14,26 @@ interface Props {
   onDeleted: (id: string) => void;
 }
 
+const ALL_LEVELS = [
+  { label: 'Wanderer',        emoji: '🚶', color: '#9E9E9E', min: 0  },
+  { label: 'Scout',           emoji: '🔍', color: '#FF9800', min: 10 },
+  { label: 'Explorer',        emoji: '🌿', color: '#4CAF50', min: 30 },
+  { label: 'Pathfinder',      emoji: '🧭', color: '#2196F3', min: 60 },
+  { label: 'Cartographer',    emoji: '🗺️', color: '#9C27B0', min: 90 },
+  { label: 'Master Explorer', emoji: '👑', color: '#FFD700', min: 100 },
+];
+
+function getAreaLevel(pct: number) {
+  for (let i = ALL_LEVELS.length - 1; i >= 0; i--) {
+    if (pct >= ALL_LEVELS[i].min) return ALL_LEVELS[i];
+  }
+  return ALL_LEVELS[0];
+}
+
 export function MyAreasSheet({ visible, areas, activeAreaId, onSelect, onCreateNew, onClose, onRenamed, onDeleted }: Props) {
   const [editingArea, setEditingArea] = useState<Area | null>(null);
   const [editName, setEditName] = useState('');
+  const [levelModalArea, setLevelModalArea] = useState<Area | null>(null);
 
   function handleLongPress(area: Area) {
     setEditingArea(area);
@@ -37,6 +54,11 @@ export function MyAreasSheet({ visible, areas, activeAreaId, onSelect, onCreateN
     setEditingArea(null);
   }
 
+  const levelModalPct = levelModalArea
+    ? Math.round((levelModalArea.coloredSegmentIds.length / Math.max(levelModalArea.segments.length, 1)) * 100)
+    : 0;
+  const currentLevel = levelModalArea ? getAreaLevel(levelModalPct) : null;
+
   return (
     <>
       <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -53,6 +75,7 @@ export function MyAreasSheet({ visible, areas, activeAreaId, onSelect, onCreateN
                 const pct = Math.round(
                   (area.coloredSegmentIds.length / Math.max(area.segments.length, 1)) * 100,
                 );
+                const level = getAreaLevel(pct);
                 const isActive = area.id === activeAreaId;
                 return (
                   <TouchableOpacity
@@ -65,9 +88,19 @@ export function MyAreasSheet({ visible, areas, activeAreaId, onSelect, onCreateN
                   >
                     <View style={styles.areaCardLeft}>
                       <Text style={[styles.areaName, isActive && styles.areaNameActive]}>
-                        {area.name}
+                        {area.conquered ? '🚩 ' : ''}{area.name}
                       </Text>
                       <Text style={styles.areaMeta}>{area.radiusKm} km radius · {area.segments.length} streets</Text>
+                      <TouchableOpacity
+                        style={[styles.levelChip, { borderColor: level.color }]}
+                        onPress={() => setLevelModalArea(area)}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[styles.levelChipText, { color: level.color }]}>
+                          {level.emoji} {level.label}
+                        </Text>
+                      </TouchableOpacity>
                     </View>
                     <View style={styles.areaCardRight}>
                       <Text style={[styles.areaPct, isActive && styles.areaPctActive]}>{pct}%</Text>
@@ -87,7 +120,38 @@ export function MyAreasSheet({ visible, areas, activeAreaId, onSelect, onCreateN
         </View>
       </Modal>
 
-      {/* Rename modal */}
+      {/* Level progression modal */}
+      <Modal visible={!!levelModalArea} transparent animationType="fade" onRequestClose={() => setLevelModalArea(null)}>
+        <TouchableOpacity style={styles.levelModalOverlay} activeOpacity={1} onPress={() => setLevelModalArea(null)}>
+          <TouchableOpacity style={styles.levelModalCard} activeOpacity={1} onPress={() => {}}>
+            <Text style={styles.levelModalTitle}>{levelModalArea?.name}</Text>
+            <Text style={styles.levelModalSub}>{levelModalPct}% explored</Text>
+            <View style={styles.levelList}>
+              {ALL_LEVELS.map((lvl) => {
+                const isCurrent = lvl.label === currentLevel?.label;
+                const isUnlocked = levelModalPct >= lvl.min;
+                return (
+                  <View key={lvl.label} style={[styles.levelRow, isCurrent && styles.levelRowCurrent]}>
+                    <Text style={[styles.levelEmoji, !isUnlocked && styles.locked]}>{lvl.emoji}</Text>
+                    <View style={styles.levelInfo}>
+                      <Text style={[styles.levelLabel, { color: isUnlocked ? lvl.color : '#BDBDBD' }, isCurrent && styles.levelLabelBold]}>
+                        {lvl.label}
+                      </Text>
+                      <Text style={styles.levelReq}>{lvl.min === 100 ? '100%' : `${lvl.min}%+`}</Text>
+                    </View>
+                    {isCurrent && <Text style={[styles.currentBadge, { color: lvl.color }]}>YOU</Text>}
+                  </View>
+                );
+              })}
+            </View>
+            <TouchableOpacity style={styles.levelModalClose} onPress={() => setLevelModalArea(null)}>
+              <Text style={styles.levelModalCloseText}>Close</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Rename / Delete modal */}
       <Modal visible={!!editingArea} transparent animationType="fade" onRequestClose={() => setEditingArea(null)}>
         <View style={styles.renameOverlay}>
           <View style={styles.renameCard}>
@@ -136,7 +200,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 24,
     paddingHorizontal: 24,
     paddingBottom: 40,
-    maxHeight: '70%',
+    maxHeight: '75%',
   },
   handle: {
     width: 40,
@@ -148,7 +212,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   title: { fontSize: 20, fontWeight: '800', color: '#1A1A1A', marginBottom: 16 },
-  list: { maxHeight: 320 },
+  list: { maxHeight: 340 },
   empty: { fontSize: 14, color: '#BDBDBD', textAlign: 'center', paddingVertical: 24 },
   hint: { fontSize: 11, color: '#BDBDBD', textAlign: 'center', marginTop: 8, marginBottom: 4 },
   areaCard: {
@@ -166,11 +230,20 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: '#FF6B6B',
   },
-  areaCardLeft: { flex: 1, gap: 3 },
+  areaCardLeft: { flex: 1, gap: 4 },
   areaName: { fontSize: 16, fontWeight: '700', color: '#1A1A1A' },
   areaNameActive: { color: '#FF6B6B' },
   areaMeta: { fontSize: 12, color: '#BDBDBD' },
-  areaCardRight: { alignItems: 'center', gap: 4 },
+  levelChip: {
+    alignSelf: 'flex-start',
+    borderWidth: 1.5,
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    marginTop: 2,
+  },
+  levelChipText: { fontSize: 12, fontWeight: '700' },
+  areaCardRight: { alignItems: 'center', gap: 4, marginLeft: 12 },
   areaPct: { fontSize: 18, fontWeight: '800', color: '#BDBDBD' },
   areaPctActive: { color: '#FF6B6B' },
   activeDot: {
@@ -187,6 +260,48 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   createBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  // Level modal
+  levelModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 28,
+  },
+  levelModalCard: {
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    padding: 24,
+    width: '100%',
+    gap: 4,
+  },
+  levelModalTitle: { fontSize: 18, fontWeight: '800', color: '#1A1A1A', textAlign: 'center' },
+  levelModalSub: { fontSize: 13, color: '#888', textAlign: 'center', marginBottom: 12 },
+  levelList: { gap: 2 },
+  levelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    gap: 12,
+  },
+  levelRowCurrent: { backgroundColor: '#F5F5F5' },
+  levelEmoji: { fontSize: 24, width: 32, textAlign: 'center' },
+  locked: { opacity: 0.3 },
+  levelInfo: { flex: 1 },
+  levelLabel: { fontSize: 15, fontWeight: '600' },
+  levelLabelBold: { fontWeight: '800' },
+  levelReq: { fontSize: 11, color: '#BDBDBD', marginTop: 1 },
+  currentBadge: { fontSize: 11, fontWeight: '800', letterSpacing: 0.5 },
+  levelModalClose: {
+    marginTop: 12,
+    backgroundColor: '#1A1A1A',
+    borderRadius: 14,
+    paddingVertical: 13,
+    alignItems: 'center',
+  },
+  levelModalCloseText: { color: '#fff', fontSize: 15, fontWeight: '700' },
   // Rename modal
   renameOverlay: {
     flex: 1,

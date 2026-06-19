@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Animated, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import MapboxGL from '@rnmapbox/maps';
 import { MAPBOX_TOKEN } from '../constants';
@@ -8,7 +8,7 @@ import { saveRunRecord } from '../services/storage';
 import { findNewStreets, getTotalExploredCount, saveNewStreets } from '../services/streetTracker';
 import { getNewlyEarnedBadges } from '../services/badges';
 import { matchTraceToSegments } from '../services/overpassApi';
-import { updateAreaColoredSegments } from '../services/areaStorage';
+import { setAreaConquered, updateAreaColoredSegments } from '../services/areaStorage';
 
 MapboxGL.setAccessToken(MAPBOX_TOKEN);
 
@@ -62,6 +62,9 @@ export function RunSummaryScreen({ coveredKm, elapsedSeconds, route, onHome, act
   const [badgeModalVisible, setBadgeModalVisible] = useState(false);
   const [saved, setSaved] = useState(false);
   const [savedNewStreets, setSavedNewStreets] = useState<string[]>([]);
+  const [showConquest, setShowConquest] = useState(false);
+  const flagScale = useRef(new Animated.Value(0)).current;
+  const flagOpacity = useRef(new Animated.Value(0)).current;
 
   const routeGeoJSON: GeoJSON.Feature<GeoJSON.LineString> = {
     type: 'Feature',
@@ -82,6 +85,16 @@ export function RunSummaryScreen({ coveredKm, elapsedSeconds, route, onHome, act
     newSegments.length > 0
       ? { type: 'Feature', properties: {}, geometry: { type: 'MultiLineString', coordinates: newSegments } }
       : null;
+
+  function triggerConquestAnimation() {
+    flagScale.setValue(0);
+    flagOpacity.setValue(0);
+    Animated.parallel([
+      Animated.spring(flagScale, { toValue: 1, friction: 4, tension: 40, useNativeDriver: true }),
+      Animated.timing(flagOpacity, { toValue: 1, duration: 300, useNativeDriver: true }),
+    ]).start();
+    setShowConquest(true);
+  }
 
   async function handleSave() {
     const coveredM = coveredKm * 1000;
@@ -104,7 +117,6 @@ export function RunSummaryScreen({ coveredKm, elapsedSeconds, route, onHome, act
       .map(s => s.coordinates);
 
     const trace = gpsTrace && gpsTrace.length >= 2 ? gpsTrace : null;
-    console.log(`[Save] gpsTrace points: ${gpsTrace?.length ?? 0}, liveColoredIds: ${liveColoredIds?.size ?? 0}`);
 
     const record: RunRecord = {
       id: String(Date.now()),
@@ -123,8 +135,14 @@ export function RunSummaryScreen({ coveredKm, elapsedSeconds, route, onHome, act
     if (activeArea && activeArea.segments.length > 0) {
       const matched = trace ? matchTraceToSegments(trace, activeArea.segments) : [];
       mergedColoredIds = Array.from(new Set([...matched, ...(liveColoredIds ?? [])]));
-      console.log(`[Save] matched: ${matched.length}, live: ${liveColoredIds?.size ?? 0}, merged: ${mergedColoredIds.length} / ${activeArea.segments.length}`);
       if (mergedColoredIds.length > 0) await updateAreaColoredSegments(activeArea.id, mergedColoredIds);
+
+      // 100% 달성 체크 — 아직 정복되지 않은 경우에만
+      const totalColored = new Set([...activeArea.coloredSegmentIds, ...mergedColoredIds]);
+      if (!activeArea.conquered && totalColored.size >= activeArea.segments.length && activeArea.segments.length > 0) {
+        await setAreaConquered(activeArea.id);
+        triggerConquestAnimation();
+      }
     }
 
     await saveRunRecord({ ...record, coloredSegmentIds: mergedColoredIds });
@@ -141,10 +159,6 @@ export function RunSummaryScreen({ coveredKm, elapsedSeconds, route, onHome, act
   function handleDone() {
     onHome();
     navigation.navigate('Home' as never);
-  }
-
-  function handleBadgeClose() {
-    setBadgeModalVisible(false);
   }
 
   return (
@@ -234,6 +248,26 @@ export function RunSummaryScreen({ coveredKm, elapsedSeconds, route, onHome, act
         <Text style={styles.saveButtonText}>{saved ? 'Done' : 'Save & Go Home'}</Text>
       </TouchableOpacity>
 
+      {/* Conquest celebration modal */}
+      <Modal visible={showConquest} transparent animationType="fade">
+        <View style={styles.conquestOverlay}>
+          <View style={styles.conquestCard}>
+            <Animated.Text style={[styles.conquestFlag, { transform: [{ scale: flagScale }], opacity: flagOpacity }]}>
+              🚩
+            </Animated.Text>
+            <Text style={styles.conquestTitle}>Conquered!</Text>
+            <Text style={styles.conquestArea}>{activeArea?.name}</Text>
+            <View style={styles.masterBadge}>
+              <Text style={styles.masterBadgeText}>👑 Master Explorer</Text>
+            </View>
+            <Text style={styles.conquestSub}>You've explored every street in this area.</Text>
+            <TouchableOpacity style={styles.conquestBtn} onPress={() => setShowConquest(false)} activeOpacity={0.8}>
+              <Text style={styles.conquestBtnText}>Plant the Flag!</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       {/* Badge achievement modal */}
       <Modal visible={badgeModalVisible} transparent animationType="fade">
         <View style={styles.modalOverlay}>
@@ -248,7 +282,7 @@ export function RunSummaryScreen({ coveredKm, elapsedSeconds, route, onHome, act
                 </View>
               </View>
             ))}
-            <TouchableOpacity style={styles.modalButton} onPress={() => { handleBadgeClose(); }}>
+            <TouchableOpacity style={styles.modalButton} onPress={() => { setBadgeModalVisible(false); }}>
               <Text style={styles.modalButtonText}>Continue</Text>
             </TouchableOpacity>
           </View>
@@ -321,6 +355,45 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   saveButtonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  // Conquest modal
+  conquestOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  conquestCard: {
+    backgroundColor: '#fff',
+    borderRadius: 28,
+    padding: 32,
+    width: '100%',
+    alignItems: 'center',
+    gap: 10,
+  },
+  conquestFlag: { fontSize: 72, marginBottom: 4 },
+  conquestTitle: { fontSize: 32, fontWeight: '900', color: '#1A1A1A', letterSpacing: -1 },
+  conquestArea: { fontSize: 17, color: '#888', fontWeight: '600' },
+  masterBadge: {
+    backgroundColor: '#FFF9C4',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderWidth: 1.5,
+    borderColor: '#FFD700',
+    marginVertical: 4,
+  },
+  masterBadgeText: { fontSize: 15, fontWeight: '800', color: '#B8860B' },
+  conquestSub: { fontSize: 13, color: '#BDBDBD', textAlign: 'center' },
+  conquestBtn: {
+    marginTop: 8,
+    backgroundColor: '#1A1A1A',
+    borderRadius: 20,
+    paddingVertical: 15,
+    paddingHorizontal: 48,
+  },
+  conquestBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  // Badge modal
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',

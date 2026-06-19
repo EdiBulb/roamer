@@ -40,18 +40,22 @@ export async function deleteArea(id: string): Promise<void> {
   await AsyncStorage.setItem(AREAS_KEY, JSON.stringify(existing.filter((a) => a.id !== id)));
 }
 
+export async function setAreaConquered(areaId: string): Promise<void> {
+  const existing = await loadAreas();
+  const updated = existing.map((a) => a.id === areaId ? { ...a, conquered: true } : a);
+  await AsyncStorage.setItem(AREAS_KEY, JSON.stringify(updated));
+}
+
 export async function recalculateAreaColoredSegments(areaId: string): Promise<void> {
   const [allAreas, allHistory] = await Promise.all([loadAreas(), loadRunHistory()]);
   const area = allAreas.find((a) => a.id === areaId);
   if (!area) return;
 
   const areaRuns = allHistory.filter((r) => r.areaId === areaId);
-  console.log(`[Recalc] area: ${areaId}, remaining runs: ${areaRuns.length}`);
   const allColoredIds = new Set<string>();
   for (const run of areaRuns) {
     (run.coloredSegmentIds ?? []).forEach((id) => allColoredIds.add(id));
   }
-  console.log(`[Recalc] final colored: ${allColoredIds.size}`);
 
   const updated = allAreas.map((a) =>
     a.id === areaId ? { ...a, coloredSegmentIds: Array.from(allColoredIds) } : a,

@@ -26,3 +26,9 @@ export async function updateRunRecord(id: string, name: string): Promise<void> {
   const updated = existing.map((r) => r.id === id ? { ...r, name } : r);
   await AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
 }
+
+export async function updateRunMemo(id: string, memo: string): Promise<void> {
+  const existing = await loadRunHistory();
+  const updated = existing.map((r) => r.id === id ? { ...r, memo } : r);
+  await AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
+}

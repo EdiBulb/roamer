@@ -36,6 +36,7 @@ export interface RunRecord {
   gpsTrace?: Coordinate[];
   areaId?: string;
   coloredSegmentIds?: string[];
+  memo?: string;
 }
 
 export interface RoadSegment {
@@ -51,6 +52,7 @@ export interface Area {
   segments: RoadSegment[];
   coloredSegmentIds: string[];
   createdAt: string;
+  conquered?: boolean;
 }
 
 export interface Badge {

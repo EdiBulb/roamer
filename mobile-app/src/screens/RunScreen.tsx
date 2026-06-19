@@ -579,6 +579,7 @@ export function RunScreen() {
           </TouchableOpacity>
         )}
 
+
         <MyAreasSheet
           visible={showMyAreas}
           areas={areas}
