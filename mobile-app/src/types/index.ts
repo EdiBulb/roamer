@@ -19,7 +19,8 @@ export interface RunRoute {
   distanceKm: number;
   steps: RouteStep[];
   streetNames: string[];
-  waypoints: Coordinate[];  // debug: waypoints used to generate this route
+  waypoints: Coordinate[];
+  distanceWarning?: { targetKm: number; actualKm: number };
 }
 
 export type RouteStatus = 'idle' | 'loading' | 'success' | 'error';

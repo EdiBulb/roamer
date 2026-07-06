@@ -1,4 +1,4 @@
-import { Animated, KeyboardAvoidingView, Platform, PanResponder, ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, KeyboardAvoidingView, Modal, Platform, PanResponder, ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
 
@@ -85,7 +85,8 @@ export function RunScreen() {
   const [routeMode, setRouteMode] = useState<RouteMode>('loop');
   const [destination, setDestination] = useState<Coordinate | null>(null);
   const [difficulty, setDifficulty] = useState<Difficulty>('normal');
-  const { route, status, generate, clearRoute } = useRoute(location, selectedDistance, routeMode, destination, difficulty, activeArea);
+  const { route, status, generate, generateTight, clearRoute } = useRoute(location, selectedDistance, routeMode, destination, difficulty, activeArea);
+  const [showDistanceModal, setShowDistanceModal] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
   const [isFinished, setIsFinished] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -109,6 +110,13 @@ export function RunScreen() {
   const activeAreaRef = useRef<Area | null>(null);
   const segmentHitCountRef = useRef<Map<string, number>>(new Map());
   useEffect(() => { activeAreaRef.current = activeArea; }, [activeArea]);
+
+  // Show modal when generated route is >30% longer than target
+  useEffect(() => {
+    if (route?.distanceWarning && !isRunning) {
+      setShowDistanceModal(true);
+    }
+  }, [route]);
   const panelNaturalHeightRef = useRef(0);
   const slideY = useRef(new Animated.Value(0)).current;
   const slideStartRef = useRef(0);
@@ -731,6 +739,41 @@ export function RunScreen() {
           )}
         </Animated.View>
       )}
+      {/* ── Distance warning modal ── */}
+      <Modal
+        visible={showDistanceModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowDistanceModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.distanceModal}>
+            <Text style={styles.distanceModalEmoji}>🗺️</Text>
+            <Text style={styles.distanceModalTitle}>더 좋은 루트를 찾았어요</Text>
+            <Text style={styles.distanceModalBody}>
+              이 동네에서 {route?.distanceWarning?.targetKm}km 루트를 만들기 어려워{'\n'}
+              더 넓게 도는 <Text style={styles.distanceModalKm}>{route?.distanceWarning?.actualKm?.toFixed(1)}km</Text> 루트가 훨씬 좋은 퀄리티예요
+            </Text>
+            <TouchableOpacity
+              style={styles.distanceModalPrimary}
+              onPress={() => setShowDistanceModal(false)}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.distanceModalPrimaryText}>이 루트로 달리기 ({route?.distanceWarning?.actualKm?.toFixed(1)}km)</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.distanceModalSecondary}
+              onPress={() => {
+                setShowDistanceModal(false);
+                generateTight();
+              }}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.distanceModalSecondaryText}>{route?.distanceWarning?.targetKm}km에 가깝게 다시 생성</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -897,5 +940,46 @@ const styles = StyleSheet.create({
   },
   generateButtonDisabled: { backgroundColor: '#A5D6A7' },
   generateButtonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 28,
+  },
+  distanceModal: {
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    paddingVertical: 28,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    gap: 12,
+    width: '100%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.18,
+    shadowRadius: 20,
+    elevation: 12,
+  },
+  distanceModalEmoji: { fontSize: 40 },
+  distanceModalTitle: { fontSize: 18, fontWeight: '800', color: '#1A1A1A', textAlign: 'center' },
+  distanceModalBody: { fontSize: 14, color: '#555', textAlign: 'center', lineHeight: 22 },
+  distanceModalKm: { fontWeight: '800', color: '#4CAF50' },
+  distanceModalPrimary: {
+    backgroundColor: '#4CAF50',
+    borderRadius: 20,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    width: '100%',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  distanceModalPrimaryText: { color: '#fff', fontSize: 15, fontWeight: '800' },
+  distanceModalSecondary: {
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+  },
+  distanceModalSecondaryText: { color: '#888', fontSize: 13, fontWeight: '600' },
 });
 

@@ -199,6 +199,26 @@ export function MapDisplay({
   }, [location]);
 
 
+  // ── numbered waypoint GeoJSON ────────────────────────────────────────────
+  // Use ShapeSource+CircleLayer+SymbolLayer instead of individual PointAnnotations.
+  // Multiple PointAnnotations on Android are unreliable when added/removed dynamically.
+
+  const waypointGeoJSON = useMemo(() => {
+    if (!route?.waypoints || route.waypoints.length === 0) return null;
+    const features = route.waypoints
+      .map((wp, i) => ({ wp, i }))
+      .filter(({ i }) => !isRunning || i !== nextWaypointIndex)
+      .map(({ wp, i }) => ({
+        type: 'Feature' as const,
+        properties: {
+          seq: String(i + 1),
+          done: (isRunning && i < nextWaypointIndex) ? '1' : '0',
+        },
+        geometry: { type: 'Point' as const, coordinates: [wp.longitude, wp.latitude] },
+      }));
+    return { type: 'FeatureCollection' as const, features };
+  }, [route, isRunning, nextWaypointIndex]);
+
   // ── route segment splitting (only when running) ───────────────────────────
 
   const segments = useMemo(() => {
@@ -474,25 +494,28 @@ export function MapDisplay({
           </MapboxGL.PointAnnotation>
         ))}
 
-        {/* ── waypoints ── */}
-        {route?.waypoints && route.waypoints.length > 0 && (
-          <MapboxGL.ShapeSource
-            id="waypoints-source"
-            shape={{
-              type: 'FeatureCollection',
-              features: route.waypoints
-                .filter((_, i) => !isRunning || i !== nextWaypointIndex)
-                .map((wp, i) => ({
-                  type: 'Feature',
-                  id: String(i),
-                  properties: {},
-                  geometry: { type: 'Point', coordinates: [wp.longitude, wp.latitude] },
-                })),
-            }}
-          >
+        {/* ── numbered waypoints (ShapeSource is reliable; PointAnnotation loops are not) ── */}
+        {waypointGeoJSON && (
+          <MapboxGL.ShapeSource id="waypoints-source" shape={waypointGeoJSON}>
             <MapboxGL.CircleLayer
-              id="waypoints-layer"
-              style={{ circleRadius: 6, circleColor: '#000', circleStrokeWidth: 2, circleStrokeColor: '#fff' }}
+              id="waypoints-circles"
+              style={{
+                circleRadius: 12,
+                circleColor: ['case', ['==', ['get', 'done'], '1'], '#9E9E9E', '#1A1A1A'] as any,
+                circleStrokeWidth: 2,
+                circleStrokeColor: '#FFFFFF',
+              }}
+            />
+            <MapboxGL.SymbolLayer
+              id="waypoints-numbers"
+              style={{
+                textField: ['get', 'seq'] as any,
+                textSize: 11,
+                textColor: ['case', ['==', ['get', 'done'], '1'], '#E0E0E0', '#FFFFFF'] as any,
+                textFont: ['DIN Offc Pro Bold', 'Arial Unicode MS Bold'],
+                textAllowOverlap: true,
+                iconAllowOverlap: true,
+              }}
             />
           </MapboxGL.ShapeSource>
         )}
@@ -696,4 +719,17 @@ const styles = StyleSheet.create({
   },
   flagMarker: { alignItems: 'center', justifyContent: 'center' },
   flagMarkerText: { fontSize: 28 },
+  wpBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#1A1A1A',
+    borderWidth: 2,
+    borderColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  wpBadgeDone: { backgroundColor: '#9E9E9E' },
+  wpBadgeText: { fontSize: 11, fontWeight: '800', color: '#fff' },
+  wpBadgeTextDone: { color: '#E0E0E0' },
 });
