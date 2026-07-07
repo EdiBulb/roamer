@@ -52,7 +52,7 @@ export function getBoundingBox(coordinates: Coordinate[]): { ne: [number, number
 
 async function fetchRawRoute(points: Coordinate[]): Promise<{ route: any; snappedWaypoints: Coordinate[] }> {
   const coords = points.map((c) => `${c.longitude},${c.latitude}`).join(';');
-  const url = `${DIRECTIONS_URL}/${coords}?geometries=geojson&overview=full&steps=true&access_token=${MAPBOX_TOKEN}`;
+  const url = `${DIRECTIONS_URL}/${coords}?geometries=geojson&overview=full&steps=true&exclude=ferry&continue_straight=true&access_token=${MAPBOX_TOKEN}`;
   const response = await fetch(url);
   if (!response.ok) throw new Error('Failed to fetch route from Mapbox.');
   const data = await response.json();
@@ -248,7 +248,7 @@ async function fetchRouteCandidateLoop(
   // tightMode: prioritise hitting distance target over quality (U-turns allowed)
   // Used when user declines an over-distance route and wants a shorter one instead.
   let scaleFactor = tightMode ? 0.44 : 0.65;
-  const MAX_ATTEMPTS = 4;
+  const MAX_ATTEMPTS = 6;
   let bestResult: { route: any; waypoints: Coordinate[] } | null = null;
   let bestScore = -Infinity;
 
@@ -265,8 +265,17 @@ async function fetchRouteCandidateLoop(
       const actualKm = route.distance / 1000;
       const distErr = Math.abs(actualKm - targetKm) / targetKm;
 
+      const snappedWaypoints = result.snappedWaypoints;
+
+      // Always update bestResult so we have a fallback even if quality checks fail
       const score = scoreRoute(route, targetKm, uncoloredSegments);
-      if (score > bestScore) { bestScore = score; bestResult = { route, waypoints: result.snappedWaypoints }; }
+      if (score > bestScore) { bestScore = score; bestResult = { route, waypoints: snappedWaypoints }; }
+
+      // Skip early-return path if any waypoint snapped >300m from intended (off-road placement)
+      const badSnap = waypoints.some((wp: Coordinate, i: number) =>
+        snappedWaypoints[i] && haversineKmInternal(snappedWaypoints[i], wp) > 0.30,
+      );
+      if (badSnap) continue;
 
       if (distErr > (tightMode ? 0.15 : 0.25)) {
         scaleFactor = Math.min(
@@ -279,7 +288,7 @@ async function fetchRouteCandidateLoop(
       // In tight mode skip U-turn check — distance accuracy matters more than quality
       if (!tightMode && hasUTurn(route.legs ?? [])) continue;
 
-      return { route, waypoints: result.snappedWaypoints };
+      return { route, waypoints: snappedWaypoints };
     } catch {
       continue;
     }
