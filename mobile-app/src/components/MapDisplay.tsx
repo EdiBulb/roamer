@@ -23,27 +23,7 @@ function findCoordIndex(coords: Coordinate[], target: Coordinate): number {
   return minIdx;
 }
 
-function calcBearing(from: Coordinate, to: Coordinate): number {
-  const lat1 = (from.latitude * Math.PI) / 180;
-  const lat2 = (to.latitude * Math.PI) / 180;
-  const dLon = ((to.longitude - from.longitude) * Math.PI) / 180;
-  const y = Math.sin(dLon) * Math.cos(lat2);
-  const x =
-    Math.cos(lat1) * Math.sin(lat2) -
-    Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
-  return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
-}
 
-function sampleArrows(
-  coords: Coordinate[],
-  interval = 8,
-): Array<{ coord: Coordinate; bearing: number }> {
-  const result: Array<{ coord: Coordinate; bearing: number }> = [];
-  for (let i = interval; i < coords.length - 1; i += interval) {
-    result.push({ coord: coords[i], bearing: calcBearing(coords[i - 1], coords[i + 1]) });
-  }
-  return result;
-}
 
 function makeCircleGeoJSON(
   center: Coordinate,
@@ -136,6 +116,7 @@ export function MapDisplay({
   const [mapHeading, setMapHeading] = useState(0);
   const [arrowPos, setArrowPos] = useState<{ x: number; y: number } | null>(null);
   const pulseAnim = useRef(new Animated.Value(0)).current;
+  const hasSetInitialZoomRef = useRef(false);
 
   async function recalcArrowPos() {
     if (!mapRef.current) return;
@@ -156,12 +137,19 @@ export function MapDisplay({
     return () => loop.stop();
   }, []);
 
-  // Running: follow user
+  // Running: follow user. Zoom set only once at run start — subsequent GPS updates
+  // only move the center/heading so the user can freely zoom in without being reset.
   useEffect(() => {
-    if (!isRunning || followMode === 'free') return;
+    if (!isRunning) {
+      hasSetInitialZoomRef.current = false;
+      return;
+    }
+    if (followMode === 'free') return;
+    const applyZoom = !hasSetInitialZoomRef.current;
+    hasSetInitialZoomRef.current = true;
     cameraRef.current?.setCamera({
       centerCoordinate: [location.longitude, location.latitude],
-      zoomLevel: 18,
+      ...(applyZoom ? { zoomLevel: 18 } : {}),
       heading: followMode === 'north' ? 0 : bearing,
       pitch: followMode === 'north' ? 0 : 45,
       animationDuration: 400,
@@ -242,13 +230,6 @@ export function MapDisplay({
     };
   }, [route, isRunning, nextWaypointIndex]);
 
-  const arrows = useMemo(() => {
-    if (!segments) return [];
-    return [
-      ...sampleArrows(segments.current).map((a, i) => ({ ...a, id: `cur-${i}` })),
-      ...sampleArrows(segments.next).map((a, i) => ({ ...a, id: `nxt-${i}` })),
-    ];
-  }, [segments]);
 
   // ── area boundary circles (not running) ──────────────────────────────────
 
@@ -357,12 +338,15 @@ export function MapDisplay({
           recalcArrowPos();
         }}
       >
-        {/* ── camera (single ref — all positioning is imperative via useEffects) ── */}
+        {/* ── camera: declarative props only when not running.
+              When running, camera is controlled entirely via imperative setCamera()
+              calls so user zoom/pan gestures are not overridden by prop updates. ── */}
         <MapboxGL.Camera
           ref={cameraRef}
-          zoomLevel={DEFAULT_ZOOM}
-          centerCoordinate={center}
-          animationMode="none"
+          {...(!isRunning
+            ? { centerCoordinate: center, zoomLevel: DEFAULT_ZOOM, animationMode: 'none' }
+            : {}
+          )}
         />
 
 
@@ -481,18 +465,6 @@ export function MapDisplay({
           </>
         )}
 
-        {/* ── direction arrows (current + next segments only) ── */}
-        {arrows.map(({ id, coord, bearing: b }) => (
-          <MapboxGL.PointAnnotation
-            key={id}
-            id={`arrow-${id}`}
-            coordinate={[coord.longitude, coord.latitude]}
-          >
-            <View style={[styles.arrowMarkerWrapper, { transform: [{ rotate: `${b}deg` }] }]}>
-              <View style={styles.arrowMarker} />
-            </View>
-          </MapboxGL.PointAnnotation>
-        ))}
 
         {/* ── numbered waypoints (ShapeSource is reliable; PointAnnotation loops are not) ── */}
         {waypointGeoJSON && (
@@ -617,23 +589,7 @@ export function MapDisplay({
 const styles = StyleSheet.create({
   container: { flex: 1, width: '100%' },
   map: { flex: 1 },
-  arrowMarkerWrapper: {
-    width: 14,
-    height: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  arrowMarker: {
-    width: 0,
-    height: 0,
-    borderLeftWidth: 5,
-    borderRightWidth: 5,
-    borderBottomWidth: 10,
-    borderStyle: 'solid',
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
-    borderBottomColor: '#fff',
-  },
+
   destinationOuter: {
     width: 26,
     height: 26,
