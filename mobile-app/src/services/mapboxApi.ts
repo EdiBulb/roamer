@@ -52,7 +52,7 @@ export function getBoundingBox(coordinates: Coordinate[]): { ne: [number, number
 
 async function fetchRawRoute(points: Coordinate[]): Promise<{ route: any; snappedWaypoints: Coordinate[] }> {
   const coords = points.map((c) => `${c.longitude},${c.latitude}`).join(';');
-  const url = `${DIRECTIONS_URL}/${coords}?geometries=geojson&overview=full&steps=true&exclude=ferry&continue_straight=true&access_token=${MAPBOX_TOKEN}`;
+  const url = `${DIRECTIONS_URL}/${coords}?geometries=geojson&overview=full&steps=true&exclude=ferry&continue_straight=true&language=ko&access_token=${MAPBOX_TOKEN}`;
   const response = await fetch(url);
   if (!response.ok) throw new Error('Failed to fetch route from Mapbox.');
   const data = await response.json();
