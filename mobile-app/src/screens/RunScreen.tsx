@@ -201,6 +201,7 @@ export function RunScreen() {
     let prevCoord: Coordinate | null = null;
     let localCoveredM = 0;
     let lastAnnouncedKmMilestone = 0;
+    const runStartTime = Date.now();
     let lastVoiceTime = 0;
     let nextPreviewIdx = 0;
     let nextFinalIdx = 0;
@@ -362,7 +363,11 @@ export function RunScreen() {
           if (settingsRef.current.voiceFrequency === 'chatty') {
             const kmMilestone = Math.floor(localCoveredM / 1000);
             if (kmMilestone > lastAnnouncedKmMilestone && kmMilestone > 0) {
-              speak(`${kmMilestone}킬로미터 달렸습니다!`);
+              const elapsedSec = (Date.now() - runStartTime) / 1000;
+              const paceSecPerKm = elapsedSec / (localCoveredM / 1000);
+              const paceMin = Math.floor(paceSecPerKm / 60);
+              const paceSec = Math.round(paceSecPerKm % 60);
+              speak(`${kmMilestone}킬로미터 통과! 페이스 ${paceMin}분 ${paceSec.toString().padStart(2, '0')}초`);
               lastAnnouncedKmMilestone = kmMilestone;
             }
           }
