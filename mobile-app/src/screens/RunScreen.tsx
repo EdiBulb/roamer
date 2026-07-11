@@ -234,7 +234,11 @@ export function RunScreen() {
       lastVoiceTime = Date.now();
     };
 
-    speak('달리기를 시작합니다. 파이팅!');
+    const distText = route.distanceKm.toFixed(1).replace('.0', '') + '킬로미터';
+    const firstStep = steps[0]?.instruction;
+    speak(firstStep
+      ? `${distText} 루트 시작합니다. ${firstStep}`
+      : `${distText} 루트 시작합니다. 파이팅!`);
 
     Location.watchPositionAsync(
       { accuracy: Location.Accuracy.BestForNavigation, timeInterval: 2000, distanceInterval: 0 },
