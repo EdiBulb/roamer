@@ -359,10 +359,11 @@ export function RunScreen() {
             nextFinalIdx = Math.max(nextFinalIdx + 1, nextPreviewIdx);
           }
 
-          // KM milestone (chatty)
+          // KM milestone (chatty) — suppressed once finish countdown begins
           if (settingsRef.current.voiceFrequency === 'chatty') {
             const kmMilestone = Math.floor(localCoveredM / 1000);
-            if (kmMilestone > lastAnnouncedKmMilestone && kmMilestone > 0) {
+            const inFinishZone = FINISH_MILESTONES.length > 0 && remainingM <= FINISH_MILESTONES[0];
+            if (kmMilestone > lastAnnouncedKmMilestone && kmMilestone > 0 && !inFinishZone) {
               const elapsedSec = (Date.now() - runStartTime) / 1000;
               const paceSecPerKm = elapsedSec / (localCoveredM / 1000);
               const paceMin = Math.floor(paceSecPerKm / 60);
