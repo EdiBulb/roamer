@@ -74,7 +74,7 @@ export function SettingsModal({ visible, settings, onUpdate, onClose }: Props) {
                 labels={['Minimal', 'Normal', 'Chatty']}
               />
               <Text style={styles.hint}>
-                {settings.voiceFrequency === 'minimal' && 'Turn instructions only'}
+                {settings.voiceFrequency === 'minimal' && 'Turn instructions + off-route alerts'}
                 {settings.voiceFrequency === 'normal' && 'Turns + waypoint arrivals'}
                 {settings.voiceFrequency === 'chatty' && 'Turns + waypoints + km milestones'}
               </Text>

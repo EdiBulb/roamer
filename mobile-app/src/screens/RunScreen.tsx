@@ -302,9 +302,11 @@ export function RunScreen() {
                 : `체크포인트 ${arrivedAt} 도착! 체크포인트 ${arrivedAt + 1}로 향합니다.`);
             }
           } else if (!wpPreviewed.has(nextWpIdx) && localCoveredM >= wpDist - WP_PREVIEW_M) {
-            speak(nextWpIdx === totalWp - 1
-              ? '곧 마지막 체크포인트에 도착합니다.'
-              : `곧 체크포인트 ${nextWpIdx + 1}에 도착합니다.`);
+            if (settingsRef.current.voiceFrequency !== 'minimal') {
+              speak(nextWpIdx === totalWp - 1
+                ? '곧 마지막 체크포인트에 도착합니다.'
+                : `곧 체크포인트 ${nextWpIdx + 1}에 도착합니다.`);
+            }
             wpPreviewed.add(nextWpIdx);
           }
         }
@@ -314,9 +316,11 @@ export function RunScreen() {
         for (const milestone of FINISH_MILESTONES) {
           if (remainingM <= milestone && !announcedFinishMilestones.has(milestone)) {
             announcedFinishMilestones.add(milestone);
-            speak(milestone === 200
-              ? '거의 다 왔어요! 200미터!'
-              : `${milestone >= 1000 ? `${milestone / 1000}킬로미터` : `${milestone}미터`} 남았습니다! 조금만 더!`);
+            if (settingsRef.current.voiceFrequency !== 'minimal') {
+              speak(milestone === 200
+                ? '거의 다 왔어요! 200미터!'
+                : `${milestone >= 1000 ? `${milestone / 1000}킬로미터` : `${milestone}미터`} 남았습니다! 조금만 더!`);
+            }
           }
         }
 
@@ -377,7 +381,7 @@ export function RunScreen() {
           if (!isOffRouteRef.current && Date.now() - lastVoiceTime > SILENCE_MS) {
             const turnSoon = nextPreviewIdx < steps.length &&
               localCoveredM >= steps[nextPreviewIdx].distanceFromStartM - TURN_PREVIEW_M - 100;
-            if (!turnSoon) {
+            if (!turnSoon && settingsRef.current.voiceFrequency !== 'minimal') {
               const remainingKm = Math.max(0, route.distanceKm - localCoveredM / 1000);
               speak(`계속 달리세요. 남은 거리 ${remainingKm.toFixed(1)}킬로미터.`);
             }
@@ -400,7 +404,7 @@ export function RunScreen() {
               offRouteTimerRef.current = setTimeout(() => {
                 setIsOffRoute(true);
                 isOffRouteRef.current = true;
-                if (settingsRef.current.voiceEnabled && settingsRef.current.voiceFrequency !== 'minimal') {
+                if (settingsRef.current.voiceEnabled) {
                   let nearestPt: Coordinate | null = null;
                   let minD = Infinity;
                   for (const c of route.coordinates) {
@@ -428,7 +432,7 @@ export function RunScreen() {
               onRouteTimerRef.current = setTimeout(() => {
                 setIsOffRoute(false);
                 isOffRouteRef.current = false;
-                if (settingsRef.current.voiceEnabled && settingsRef.current.voiceFrequency !== 'minimal') {
+                if (settingsRef.current.voiceEnabled) {
                   Speech.stop();
                   Speech.speak('루트로 돌아왔습니다.', { language: 'ko' });
                   lastVoiceTime = Date.now();
