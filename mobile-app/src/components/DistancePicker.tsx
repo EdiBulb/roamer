@@ -24,16 +24,16 @@ export function DistancePicker({ selected, onSelect }: Props) {
             </Text>
           </TouchableOpacity>
         ))}
-        <TouchableOpacity
-          style={[styles.button, styles.freeButton, selected === 'free' && styles.freeButtonSelected]}
-          onPress={() => onSelect('free')}
-          activeOpacity={0.8}
-        >
-          <Text style={[styles.buttonText, styles.freeButtonText, selected === 'free' && styles.freeButtonTextSelected]}>
-            Free
-          </Text>
-        </TouchableOpacity>
       </View>
+      <TouchableOpacity
+        style={[styles.button, styles.freeButton, selected === 'free' && styles.freeButtonSelected]}
+        onPress={() => onSelect('free')}
+        activeOpacity={0.8}
+      >
+        <Text style={[styles.buttonText, styles.freeButtonText, selected === 'free' && styles.freeButtonTextSelected]}>
+          Free Walk
+        </Text>
+      </TouchableOpacity>
     </View>
   );
 }
