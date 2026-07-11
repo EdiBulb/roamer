@@ -203,8 +203,8 @@ export function RunScreen() {
     let lastAnnouncedKmMilestone = 0;
     const runStartTime = Date.now();
     let lastVoiceTime = 0;
-    let nextPreviewIdx = 0;
-    let nextFinalIdx = 0;
+    let nextPreviewIdx = 1;
+    let nextFinalIdx = 1;
     const wpPreviewed = new Set<number>();
     const totalM = route.distanceKm * 1000;
     const FINISH_MILESTONES = [1000, 500, 200].filter((m) => m <= totalM * 0.2);
