@@ -205,6 +205,9 @@ export function RunScreen() {
     let nextPreviewIdx = 0;
     let nextFinalIdx = 0;
     const wpPreviewed = new Set<number>();
+    const totalM = route.distanceKm * 1000;
+    const FINISH_MILESTONES = [1000, 500, 200].filter((m) => m <= totalM * 0.2);
+    const announcedFinishMilestones = new Set<number>();
     let cancelled = false;
     let sub: Location.LocationSubscription | null = null;
 
@@ -302,6 +305,17 @@ export function RunScreen() {
               ? '곧 마지막 체크포인트에 도착합니다.'
               : `곧 체크포인트 ${nextWpIdx + 1}에 도착합니다.`);
             wpPreviewed.add(nextWpIdx);
+          }
+        }
+
+        // Finish countdown milestones (last 20% of route)
+        const remainingM = totalM - localCoveredM;
+        for (const milestone of FINISH_MILESTONES) {
+          if (remainingM <= milestone && !announcedFinishMilestones.has(milestone)) {
+            announcedFinishMilestones.add(milestone);
+            speak(milestone === 200
+              ? '거의 다 왔어요! 200미터!'
+              : `${milestone >= 1000 ? `${milestone / 1000}킬로미터` : `${milestone}미터`} 남았습니다! 조금만 더!`);
           }
         }
 
