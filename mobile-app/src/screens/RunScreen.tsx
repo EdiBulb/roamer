@@ -482,10 +482,21 @@ export function RunScreen() {
   function handlePause() {
     Speech.stop();
     setIsPaused(true);
+    if (settingsRef.current.voiceEnabled) {
+      Speech.speak('일시정지', { language: 'ko' });
+    }
   }
 
   function handleResume() {
     setIsPaused(false);
+    if (settingsRef.current.voiceEnabled) {
+      if (route && selectedDistance !== 'free') {
+        const remainingKm = Math.max(0, route.distanceKm - coveredKm).toFixed(1);
+        Speech.speak(`다시 달립니다! 남은 거리 ${remainingKm}킬로미터`, { language: 'ko' });
+      } else {
+        Speech.speak('다시 달립니다!', { language: 'ko' });
+      }
+    }
   }
 
   function handleMyWay() {
