@@ -46,6 +46,41 @@ function calcBearing(a: Coordinate, b: Coordinate): number {
   return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
 }
 
+function getRoutePosition(
+  coord: Coordinate,
+  routeCoords: Coordinate[],
+  routeCumDist: number[],
+  fromIdx: number,
+  windowSize = 50
+): { positionM: number; segIdx: number } {
+  const toIdx = Math.min(fromIdx + windowSize, routeCoords.length - 1);
+  const ref = routeCoords[fromIdx] ?? routeCoords[0];
+  const metersPerLat = 111320;
+  const metersPerLng = 111320 * Math.cos((ref.latitude * Math.PI) / 180);
+  let bestDist = Infinity;
+  let bestPosM = routeCumDist[fromIdx] ?? 0;
+  let bestSegIdx = fromIdx;
+
+  for (let i = fromIdx; i < toIdx; i++) {
+    const A = routeCoords[i];
+    const B = routeCoords[i + 1];
+    const bx = (B.longitude - A.longitude) * metersPerLng;
+    const by = (B.latitude - A.latitude) * metersPerLat;
+    const px = (coord.longitude - A.longitude) * metersPerLng;
+    const py = (coord.latitude - A.latitude) * metersPerLat;
+    const lenSq = bx * bx + by * by;
+    if (lenSq === 0) continue;
+    const t = Math.max(0, Math.min(1, (px * bx + py * by) / lenSq));
+    const distToProj = Math.sqrt((px - t * bx) ** 2 + (py - t * by) ** 2);
+    if (distToProj < bestDist) {
+      bestDist = distToProj;
+      bestPosM = routeCumDist[i] + t * Math.sqrt(lenSq);
+      bestSegIdx = i;
+    }
+  }
+  return { positionM: bestPosM, segIdx: bestSegIdx };
+}
+
 export function RunScreen() {
   const { advance, isActive } = useTutorial();
   const { settings } = useSettings();
@@ -203,6 +238,8 @@ export function RunScreen() {
     let lastAnnouncedKmMilestone = 0;
     const runStartTime = Date.now();
     let lastVoiceTime = 0;
+    let routeSnapIdx = 0;
+    let routePositionM = 0;
     let nextPreviewIdx = 1;
     let nextFinalIdx = 1;
     const wpPreviewed = new Set<number>();
@@ -287,12 +324,16 @@ export function RunScreen() {
           setBearing(calcBearing(prevCoord, coord));
         }
 
+        const snap = getRoutePosition(coord, routeCoords, routeCumDist, routeSnapIdx);
+        routeSnapIdx = snap.segIdx;
+        routePositionM = snap.positionM;
+
         // Waypoint preview (150m) and arrival (30m) — distanceFromStart 기준
         const nextWpIdx = nextWaypointIndexRef.current;
         if (nextWpIdx < (route.waypoints?.length ?? 0)) {
           const wpDist = wpDistancesFromStartM[nextWpIdx];
           const totalWp = route.waypoints.length;
-          if (localCoveredM >= wpDist - 30) {
+          if (routePositionM >= wpDist - 30) {
             const arrivedAt = nextWpIdx + 1;
             nextWaypointIndexRef.current += 1;
             setNextWaypointIndex(nextWaypointIndexRef.current);
@@ -301,7 +342,7 @@ export function RunScreen() {
                 ? `체크포인트 ${arrivedAt} 도착! 출발지로 돌아갑니다.`
                 : `체크포인트 ${arrivedAt} 도착! 체크포인트 ${arrivedAt + 1}로 향합니다.`);
             }
-          } else if (!wpPreviewed.has(nextWpIdx) && localCoveredM >= wpDist - WP_PREVIEW_M) {
+          } else if (!wpPreviewed.has(nextWpIdx) && routePositionM >= wpDist - WP_PREVIEW_M) {
             if (settingsRef.current.voiceFrequency !== 'minimal') {
               speak(nextWpIdx === totalWp - 1
                 ? '곧 마지막 체크포인트에 도착합니다.'
@@ -312,7 +353,7 @@ export function RunScreen() {
         }
 
         // Finish countdown milestones (last 20% of route)
-        const remainingM = totalM - localCoveredM;
+        const remainingM = totalM - routePositionM;
         for (const milestone of FINISH_MILESTONES) {
           if (remainingM <= milestone && !announcedFinishMilestones.has(milestone)) {
             announcedFinishMilestones.add(milestone);
@@ -329,7 +370,7 @@ export function RunScreen() {
         if (
           finishCoord &&
           !hasAutoFinishedRef.current &&
-          localCoveredM >= route.distanceKm * 1000 * 0.8 &&
+          routePositionM >= route.distanceKm * 1000 * 0.8 &&
           segmentKm(coord, finishCoord) * 1000 < 50
         ) {
           hasAutoFinishedRef.current = true;
@@ -345,10 +386,10 @@ export function RunScreen() {
         // 지리적 거리를 쓰면 루프 루트 귀환 구간이 출발지 근처에서 동시에 발화됨
         if (settingsRef.current.voiceEnabled) {
           // Preview: 200m 전에 예고
-          while (nextPreviewIdx < steps.length && localCoveredM >= steps[nextPreviewIdx].distanceFromStartM - TURN_PREVIEW_M) {
-            if (localCoveredM < steps[nextPreviewIdx].distanceFromStartM - TURN_FINAL_M) {
+          while (nextPreviewIdx < steps.length && routePositionM >= steps[nextPreviewIdx].distanceFromStartM - TURN_PREVIEW_M) {
+            if (routePositionM < steps[nextPreviewIdx].distanceFromStartM - TURN_FINAL_M) {
               if (settingsRef.current.voiceFrequency !== 'minimal') {
-                const distToTurn = steps[nextPreviewIdx].distanceFromStartM - localCoveredM;
+                const distToTurn = steps[nextPreviewIdx].distanceFromStartM - routePositionM;
                 speak(`${Math.round(distToTurn / 10) * 10}미터 앞에서 ${steps[nextPreviewIdx].instruction}`);
                 setCurrentInstruction(steps[nextPreviewIdx].instruction);
               }
@@ -357,7 +398,7 @@ export function RunScreen() {
           }
 
           // Final: 50m 직전 실행
-          while (nextFinalIdx < steps.length && localCoveredM >= steps[nextFinalIdx].distanceFromStartM - TURN_FINAL_M) {
+          while (nextFinalIdx < steps.length && routePositionM >= steps[nextFinalIdx].distanceFromStartM - TURN_FINAL_M) {
             speak(steps[nextFinalIdx].instruction);
             setCurrentInstruction(steps[nextFinalIdx].instruction);
             nextFinalIdx = Math.max(nextFinalIdx + 1, nextPreviewIdx);
@@ -365,7 +406,7 @@ export function RunScreen() {
 
           // KM milestone (chatty) — suppressed once finish countdown begins
           if (settingsRef.current.voiceFrequency === 'chatty') {
-            const kmMilestone = Math.floor(localCoveredM / 1000);
+            const kmMilestone = Math.floor(routePositionM / 1000);
             const inFinishZone = FINISH_MILESTONES.length > 0 && remainingM <= FINISH_MILESTONES[0];
             if (kmMilestone > lastAnnouncedKmMilestone && kmMilestone > 0 && !inFinishZone) {
               const elapsedSec = (Date.now() - runStartTime) / 1000;
@@ -380,9 +421,9 @@ export function RunScreen() {
           // Silence filler: 60s 침묵 시 남은 거리 안내
           if (!isOffRouteRef.current && Date.now() - lastVoiceTime > SILENCE_MS) {
             const turnSoon = nextPreviewIdx < steps.length &&
-              localCoveredM >= steps[nextPreviewIdx].distanceFromStartM - TURN_PREVIEW_M - 100;
+              routePositionM >= steps[nextPreviewIdx].distanceFromStartM - TURN_PREVIEW_M - 100;
             if (!turnSoon && settingsRef.current.voiceFrequency !== 'minimal') {
-              const remainingKm = Math.max(0, route.distanceKm - localCoveredM / 1000);
+              const remainingKm = Math.max(0, route.distanceKm - routePositionM / 1000);
               speak(`계속 달리세요. 남은 거리 ${remainingKm.toFixed(1)}킬로미터.`);
             }
           }
