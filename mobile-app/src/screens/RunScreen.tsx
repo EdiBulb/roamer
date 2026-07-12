@@ -140,6 +140,8 @@ export function RunScreen() {
   const [coveredKm, setCoveredKm] = useState(0);
   const [freeWalkTrace, setFreeWalkTrace] = useState<Coordinate[]>([]);
   const [gpsTrace, setGpsTrace] = useState<Coordinate[]>([]);
+  const gpsTraceRef = useRef<Coordinate[]>([]);
+  const freeWalkTraceRef = useRef<Coordinate[]>([]);
   const [liveColoredIds, setLiveColoredIds] = useState<Set<string>>(new Set());
   const activeAreaRef = useRef<Area | null>(null);
   const segmentHitCountRef = useRef<Map<string, number>>(new Map());
@@ -290,8 +292,8 @@ export function RunScreen() {
 
         const coord: Coordinate = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
         setSimulatedLocation(coord);
-        setGpsTrace((prev) => [...prev, coord]);
-        if (selectedDistance === 'free') setFreeWalkTrace((prev) => [...prev, coord]);
+        gpsTraceRef.current.push(coord);
+        if (selectedDistance === 'free') freeWalkTraceRef.current.push(coord);
 
         // Real-time segment coloring
         const area = activeAreaRef.current;
@@ -387,6 +389,8 @@ export function RunScreen() {
           segmentKm(coord, finishCoord) * 1000 < 50
         ) {
           hasAutoFinishedRef.current = true;
+          setGpsTrace([...gpsTraceRef.current]);
+          setFreeWalkTrace([...freeWalkTraceRef.current]);
           Speech.speak('완주했습니다! 수고하셨어요!', {
             language: 'ko',
             onDone: () => { setIsRunning(false); setIsPaused(false); setIsFinished(true); },
@@ -526,8 +530,10 @@ export function RunScreen() {
     isOffRouteRef.current = false;
     isMyWayModeRef.current = false;
     cardSlideY.setValue(0);
-    setFreeWalkTrace(location ? [location] : []);
-    setGpsTrace(location ? [location] : []);
+    gpsTraceRef.current = location ? [location] : [];
+    freeWalkTraceRef.current = location ? [location] : [];
+    setGpsTrace([]);
+    setFreeWalkTrace([]);
     setLiveColoredIds(new Set());
     segmentHitCountRef.current = new Map();
     setIsRunning(true);
@@ -564,6 +570,8 @@ export function RunScreen() {
 
   function handleFinishRun() {
     Speech.stop();
+    setGpsTrace([...gpsTraceRef.current]);
+    setFreeWalkTrace([...freeWalkTraceRef.current]);
     setIsRunning(false);
     setIsPaused(false);
     setIsFinished(true);
