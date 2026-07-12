@@ -227,7 +227,7 @@ export function RunScreen() {
 
     const steps = route.steps ?? [];
     const OFF_ROUTE_M = 45;
-    const OFF_ROUTE_DEBOUNCE_MS = 10_000;
+    const OFF_ROUTE_DEBOUNCE_MS = 6_000;
     const ON_ROUTE_DEBOUNCE_MS = 5_000;
     const TURN_PREVIEW_M = 200;
     const TURN_FINAL_M = 50;
