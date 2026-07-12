@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { Animated, Image, Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Calendar } from 'react-native-calendars';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRunHistory } from '../hooks/useRunHistory';
@@ -134,10 +135,9 @@ export function CalendarScreen() {
             onPressIn={onGearPressIn}
             onPressOut={onGearPressOut}
           >
-            <Animated.Image
-              source={require('../../assets/icons/icon-settings.png')}
-              style={[styles.gearBtnIcon, { transform: [{ scale: gearScale }] }]}
-            />
+            <Animated.View style={{ transform: [{ scale: gearScale }] }}>
+              <Ionicons name="settings-outline" size={26} color="#1A1A1A" />
+            </Animated.View>
           </Pressable>
         </View>
         <Text style={styles.subtitle}>Your running habit</Text>
@@ -259,11 +259,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  gearBtn: {
-    marginRight: -18,
-  },
+  gearBtn: {},
   gearBtnText: { fontSize: 20 },
-  gearBtnIcon: { width: 66, height: 66, resizeMode: 'contain' },
+  gearBtnIcon: {},
   title: { fontSize: 28, fontWeight: '800', color: '#1A1A1A' },
   subtitle: { fontSize: 14, color: '#BDBDBD', marginTop: 4 },
   section: {
