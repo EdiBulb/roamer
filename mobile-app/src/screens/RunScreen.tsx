@@ -207,6 +207,7 @@ export function RunScreen() {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [simulatedLocation, setSimulatedLocation] = useState<Coordinate | null>(null);
   const [currentInstruction, setCurrentInstruction] = useState<string | null>(null);
+  const [currentTurnDistM, setCurrentTurnDistM] = useState<number | null>(null);
   const [bearing, setBearing] = useState(0);
 
   const isGenerating = status === 'loading';
@@ -327,6 +328,17 @@ export function RunScreen() {
         const snap = getRoutePosition(coord, routeCoords, routeCumDist, routeSnapIdx);
         routeSnapIdx = snap.segIdx;
         routePositionM = snap.positionM;
+
+        if (nextPreviewIdx < steps.length) {
+          const distToNext = steps[nextPreviewIdx].distanceFromStartM - routePositionM;
+          if (distToNext > TURN_FINAL_M && distToNext <= TURN_PREVIEW_M) {
+            setCurrentTurnDistM(Math.round(distToNext / 10) * 10);
+          } else {
+            setCurrentTurnDistM(null);
+          }
+        } else {
+          setCurrentTurnDistM(null);
+        }
 
         // Waypoint preview (150m) and arrival (30m) — distanceFromStart 기준
         const nextWpIdx = nextWaypointIndexRef.current;
@@ -701,7 +713,9 @@ export function RunScreen() {
         )}
         {isRunning && currentInstruction && !isOffRoute && !isMyWayMode && (
           <View style={styles.instructionOverlay}>
-            <Text style={styles.instructionOverlayText}>{currentInstruction}</Text>
+            <Text style={styles.instructionOverlayText}>
+              {currentInstruction}{currentTurnDistM ? `  —  ${currentTurnDistM}m` : ''}
+            </Text>
           </View>
         )}
       </View>
