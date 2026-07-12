@@ -6,6 +6,7 @@ import { updateRunMemo } from '../services/storage';
 
 interface Props {
   record: RunRecord | null;
+  areaName?: string;
   onClose: () => void;
   onMemoSaved: (id: string, memo: string) => void;
   onRename: (id: string, name: string) => void;
@@ -52,7 +53,7 @@ function buildMapUrl(record: RunRecord): string | null {
   return `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/geojson(${encodeURIComponent(geoJSON)})/auto/700x420@2x?padding=60&access_token=${MAPBOX_TOKEN}`;
 }
 
-export function RunDetailModal({ record, onClose, onMemoSaved, onRename, onDelete }: Props) {
+export function RunDetailModal({ record, areaName, onClose, onMemoSaved, onRename, onDelete }: Props) {
   const [editName, setEditName] = useState(record?.name ?? '');
   const [memo, setMemo] = useState(record?.memo ?? '');
   const nameDirty = editName.trim() !== record?.name && editName.trim().length > 0;
@@ -115,6 +116,7 @@ export function RunDetailModal({ record, onClose, onMemoSaved, onRename, onDelet
               )}
             </View>
             <Text style={styles.runDate}>{formatDate(record.date)}</Text>
+            {areaName && <Text style={styles.runArea}>📍 {areaName}</Text>}
           </View>
         </View>
 
@@ -222,6 +224,7 @@ const styles = StyleSheet.create({
   },
   nameSaveBtnText: { color: '#fff', fontSize: 12, fontWeight: '700' },
   runDate: { fontSize: 12, color: '#BDBDBD' },
+  runArea: { fontSize: 12, color: '#888', marginTop: 2 },
   scroll: { flex: 1 },
   scrollContent: { paddingBottom: 40 },
   mapContainer: {

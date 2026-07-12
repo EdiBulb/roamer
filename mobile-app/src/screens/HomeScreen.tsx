@@ -4,14 +4,18 @@ import { useFocusEffect } from '@react-navigation/native';
 import { RunCard } from '../components/RunCard';
 import { RunDetailModal } from '../components/RunDetailModal';
 import { useRunHistory } from '../hooks/useRunHistory';
-import { RunRecord } from '../types';
-import { recalculateAreaColoredSegments } from '../services/areaStorage';
+import { Area, RunRecord } from '../types';
+import { recalculateAreaColoredSegments, loadAreas } from '../services/areaStorage';
 
 export function HomeScreen() {
   const { history, loading, refresh, removeRecord, renameRecord } = useRunHistory();
   const [detailRecord, setDetailRecord] = useState<RunRecord | null>(null);
+  const [areas, setAreas] = useState<Area[]>([]);
 
-  useFocusEffect(useCallback(() => { refresh(); }, [refresh]));
+  useFocusEffect(useCallback(() => {
+    refresh();
+    loadAreas().then(setAreas);
+  }, [refresh]));
 
   function handleMemoSaved(id: string, memo: string) {
     refresh();
@@ -69,6 +73,7 @@ export function HomeScreen() {
       {detailRecord && (
         <RunDetailModal
           record={detailRecord}
+          areaName={areas.find(a => a.id === detailRecord?.areaId)?.name}
           onClose={() => setDetailRecord(null)}
           onMemoSaved={handleMemoSaved}
           onRename={handleRename}

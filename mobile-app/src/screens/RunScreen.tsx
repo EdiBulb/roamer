@@ -103,12 +103,12 @@ export function RunScreen() {
   const { advance, isActive } = useTutorial();
   const { settings } = useSettings();
   const { history, refresh: refreshHistory } = useRunHistory();
-  const historyRoutes = history
-    .filter((r) => r.routeCoordinates?.length >= 2)
-    .map((r) => r.routeCoordinates);
 
   const [areas, setAreas] = useState<Area[]>([]);
   const [activeArea, setActiveArea] = useState<Area | null>(null);
+  const historyRoutes = history
+    .filter((r) => r.routeCoordinates?.length >= 2 && (!activeArea || r.areaId === activeArea.id))
+    .map((r) => r.routeCoordinates);
   const [showCreateArea, setShowCreateArea] = useState(false);
   const [showMyAreas, setShowMyAreas] = useState(false);
   const activeAreaIdRef = useRef<string | null>(null);
