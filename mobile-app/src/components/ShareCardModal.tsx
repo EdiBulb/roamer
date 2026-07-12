@@ -216,7 +216,7 @@ export function ShareCardModal({ visible, onClose, area, todayColoredIds, covere
         {/* Action buttons */}
         <View style={[styles.actions, { paddingBottom: insets.bottom + 16 }]}>
           <TouchableOpacity style={styles.saveBtn} onPress={handleSave} disabled={busy} activeOpacity={0.8}>
-            <Text style={styles.saveBtnText}>💾  Save to Gallery</Text>
+            <Text style={styles.saveBtnText}>💾  Save</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.shareBtn} onPress={handleShare} disabled={busy} activeOpacity={0.8}>
             <Text style={styles.shareBtnText}>Share  →</Text>
