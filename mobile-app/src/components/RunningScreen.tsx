@@ -53,31 +53,50 @@ export function RunningScreen({ coveredKm, elapsedSeconds, totalKm, isPaused, un
         </View>
       )}
 
-      <View style={styles.statsGrid}>
+      {totalKm === 0 ? (
         <View style={styles.statsRow}>
-          <View style={styles.stat}>
+          <View style={styles.statThird}>
             <Text style={styles.statValue}>{formatDist(coveredKm, units)}</Text>
             <Text style={styles.statLabel}>{unitLabel} covered</Text>
           </View>
-          <View style={styles.statVerticalDivider} />
-          <View style={styles.stat}>
+          <View style={styles.statDividerV} />
+          <View style={styles.statThird}>
             <Text style={styles.statValue}>{formatTime(elapsedSeconds)}</Text>
             <Text style={styles.statLabel}>time</Text>
           </View>
-        </View>
-        <View style={styles.statHorizontalDivider} />
-        <View style={styles.statsRow}>
-          <View style={styles.stat}>
+          <View style={styles.statDividerV} />
+          <View style={styles.statThird}>
             <Text style={styles.statValue}>{formatPace(coveredKm, elapsedSeconds, units)}</Text>
             <Text style={styles.statLabel}>min/{unitLabel}</Text>
           </View>
-          <View style={styles.statVerticalDivider} />
-          <View style={styles.stat}>
-            <Text style={styles.statValue}>{formatDist(remainingKm, units)}</Text>
-            <Text style={styles.statLabel}>{unitLabel} left</Text>
+        </View>
+      ) : (
+        <View style={styles.statsGrid}>
+          <View style={styles.statsRow}>
+            <View style={styles.stat}>
+              <Text style={styles.statValue}>{formatDist(coveredKm, units)}</Text>
+              <Text style={styles.statLabel}>{unitLabel} covered</Text>
+            </View>
+            <View style={styles.statVerticalDivider} />
+            <View style={styles.stat}>
+              <Text style={styles.statValue}>{formatTime(elapsedSeconds)}</Text>
+              <Text style={styles.statLabel}>time</Text>
+            </View>
+          </View>
+          <View style={styles.statHorizontalDivider} />
+          <View style={styles.statsRow}>
+            <View style={styles.stat}>
+              <Text style={styles.statValue}>{formatPace(coveredKm, elapsedSeconds, units)}</Text>
+              <Text style={styles.statLabel}>min/{unitLabel}</Text>
+            </View>
+            <View style={styles.statVerticalDivider} />
+            <View style={styles.stat}>
+              <Text style={styles.statValue}>{formatDist(remainingKm, units)}</Text>
+              <Text style={styles.statLabel}>{unitLabel} left</Text>
+            </View>
           </View>
         </View>
-      </View>
+      )}
 
       {isPaused ? (
         <View style={styles.pausedActions}>
@@ -184,7 +203,22 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   statVerticalDivider: {
-    width: 0,
+    width: 1,
+    height: 40,
+    backgroundColor: '#E0E0E0',
+    alignSelf: 'center',
+  },
+  statThird: {
+    width: '33.33%',
+    alignItems: 'center',
+    paddingVertical: 12,
+    gap: 4,
+  },
+  statDividerV: {
+    width: 1,
+    height: 40,
+    backgroundColor: '#E0E0E0',
+    alignSelf: 'center',
   },
   statHorizontalDivider: {
     width: '100%',

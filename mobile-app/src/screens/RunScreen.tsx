@@ -46,6 +46,20 @@ function calcBearing(a: Coordinate, b: Coordinate): number {
   return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
 }
 
+function getDirectionIcon(modifier?: string): string {
+  switch (modifier) {
+    case 'right':
+    case 'sharp right': return '↱';
+    case 'left':
+    case 'sharp left': return '↰';
+    case 'slight right': return '↗';
+    case 'slight left': return '↖';
+    case 'uturn': return '↩';
+    case 'straight': return '↑';
+    default: return '↑';
+  }
+}
+
 function getRoutePosition(
   coord: Coordinate,
   routeCoords: Coordinate[],
@@ -211,6 +225,7 @@ export function RunScreen() {
   useEffect(() => { elapsedSecondsRef.current = elapsedSeconds; }, [elapsedSeconds]);
   const [simulatedLocation, setSimulatedLocation] = useState<Coordinate | null>(null);
   const [currentInstruction, setCurrentInstruction] = useState<string | null>(null);
+  const [currentModifier, setCurrentModifier] = useState<string | undefined>(undefined);
   const [currentTurnDistM, setCurrentTurnDistM] = useState<number | null>(null);
   const [bearing, setBearing] = useState(0);
 
@@ -409,6 +424,7 @@ export function RunScreen() {
                 const distToTurn = steps[nextPreviewIdx].distanceFromStartM - routePositionM;
                 speak(`${Math.round(distToTurn / 10) * 10}미터 앞에서 ${steps[nextPreviewIdx].instruction}`);
                 setCurrentInstruction(steps[nextPreviewIdx].instruction);
+                setCurrentModifier(steps[nextPreviewIdx].modifier);
               }
             }
             nextPreviewIdx++;
@@ -418,8 +434,9 @@ export function RunScreen() {
           while (nextFinalIdx < steps.length && routePositionM >= steps[nextFinalIdx].distanceFromStartM - TURN_FINAL_M) {
             speak(steps[nextFinalIdx].instruction);
             setCurrentInstruction(steps[nextFinalIdx].instruction);
+            setCurrentModifier(steps[nextFinalIdx].modifier);
             nextFinalIdx = Math.max(nextFinalIdx + 1, nextPreviewIdx);
-            setTimeout(() => setCurrentInstruction(null), 5000);
+            setTimeout(() => { setCurrentInstruction(null); setCurrentModifier(undefined); }, 5000);
           }
 
           // KM milestone (chatty) — suppressed once finish countdown begins
@@ -516,6 +533,7 @@ export function RunScreen() {
     setCoveredKm(0);
     setElapsedSeconds(0);
     setCurrentInstruction(null);
+    setCurrentModifier(undefined);
     setCurrentTurnDistM(null);
     setSimulatedLocation(location);
     setIsPaused(false);
@@ -719,7 +737,7 @@ export function RunScreen() {
         {isRunning && currentInstruction && !isOffRoute && !isMyWayMode && (
           <View style={styles.instructionOverlay}>
             <Text style={styles.instructionOverlayText}>
-              {currentInstruction}{currentTurnDistM ? `  —  ${currentTurnDistM}m` : ''}
+              {getDirectionIcon(currentModifier)}  {currentInstruction}{currentTurnDistM ? `  —  ${currentTurnDistM}m` : ''}
             </Text>
           </View>
         )}

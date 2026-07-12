@@ -12,6 +12,7 @@ export interface RouteStep {
   distanceFromStartM: number;
   streetName?: string;
   coordinates: Coordinate[];
+  modifier?: string;
 }
 
 export interface RunRoute {

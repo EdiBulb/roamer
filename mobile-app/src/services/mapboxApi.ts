@@ -322,11 +322,11 @@ function parseRouteToRunRoute(route: any, usedWaypoints: Coordinate[]): RunRoute
         ([longitude, latitude]: [number, number]) => ({ latitude, longitude }),
       );
       if (type === 'arrive' && !isLastLeg) {
-        steps.push({ instruction: 'Turn around and head back.', distanceFromStartM: Math.round(stepStartM), streetName, coordinates: stepCoords });
+        steps.push({ instruction: '방향을 바꿔 되돌아가세요.', distanceFromStartM: Math.round(stepStartM), streetName, coordinates: stepCoords, modifier: 'uturn' });
         stepStartM += step.distance ?? 0;
         continue;
       }
-      steps.push({ instruction: step.maneuver.instruction, distanceFromStartM: Math.round(stepStartM), streetName, coordinates: stepCoords });
+      steps.push({ instruction: step.maneuver.instruction, distanceFromStartM: Math.round(stepStartM), streetName, coordinates: stepCoords, modifier: step.maneuver?.modifier });
       stepStartM += step.distance ?? 0;
     }
     legStartM += leg.distance ?? 0;
