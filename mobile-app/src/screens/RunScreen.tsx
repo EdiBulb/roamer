@@ -46,6 +46,10 @@ function calcBearing(a: Coordinate, b: Coordinate): number {
   return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
 }
 
+function cleanInstruction(instruction: string): string {
+  return instruction.replace(/^.+?\(으\)로\s+/, '');
+}
+
 function getDirectionIcon(modifier?: string): string {
   switch (modifier) {
     case 'right':
@@ -150,6 +154,7 @@ export function RunScreen() {
   const isMyWayModeRef = useRef(false);
   const offRouteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onRouteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const instructionClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [coveredKm, setCoveredKm] = useState(0);
   const [freeWalkTrace, setFreeWalkTrace] = useState<Coordinate[]>([]);
@@ -295,7 +300,7 @@ export function RunScreen() {
     };
 
     const distText = route.distanceKm.toFixed(1).replace('.0', '') + '킬로미터';
-    const firstStep = steps[0]?.instruction;
+    const firstStep = steps[0]?.instruction ? cleanInstruction(steps[0].instruction) : null;
     speak(firstStep
       ? `${distText} 루트 시작합니다. ${firstStep}`
       : `${distText} 루트 시작합니다. 파이팅!`);
@@ -414,31 +419,38 @@ export function RunScreen() {
           return;
         }
 
-        // 2-stage turn instructions (distanceFromStartM 기준 — 지리적 거리 X)
-        // 지리적 거리를 쓰면 루프 루트 귀환 구간이 출발지 근처에서 동시에 발화됨
-        if (settingsRef.current.voiceEnabled) {
-          // Preview: 200m 전에 예고
-          while (nextPreviewIdx < steps.length && routePositionM >= steps[nextPreviewIdx].distanceFromStartM - TURN_PREVIEW_M) {
-            if (routePositionM < steps[nextPreviewIdx].distanceFromStartM - TURN_FINAL_M) {
-              if (settingsRef.current.voiceFrequency !== 'minimal') {
-                const distToTurn = steps[nextPreviewIdx].distanceFromStartM - routePositionM;
-                speak(`${Math.round(distToTurn / 10) * 10}미터 앞에서 ${steps[nextPreviewIdx].instruction}`);
-                setCurrentInstruction(steps[nextPreviewIdx].instruction);
-                setCurrentModifier(steps[nextPreviewIdx].modifier);
-              }
+        // 2-stage turn instructions — visual overlay works regardless of voiceEnabled
+        // Preview: 200m 전에 예고
+        while (nextPreviewIdx < steps.length && routePositionM >= steps[nextPreviewIdx].distanceFromStartM - TURN_PREVIEW_M) {
+          if (routePositionM < steps[nextPreviewIdx].distanceFromStartM - TURN_FINAL_M) {
+            if (instructionClearTimerRef.current) { clearTimeout(instructionClearTimerRef.current); instructionClearTimerRef.current = null; }
+            const previewClean = cleanInstruction(steps[nextPreviewIdx].instruction);
+            setCurrentInstruction(previewClean);
+            setCurrentModifier(steps[nextPreviewIdx].modifier);
+            if (settingsRef.current.voiceEnabled && settingsRef.current.voiceFrequency !== 'minimal') {
+              const distToTurn = steps[nextPreviewIdx].distanceFromStartM - routePositionM;
+              speak(`${Math.round(distToTurn / 10) * 10}미터 앞에서 ${previewClean}`);
             }
-            nextPreviewIdx++;
           }
+          nextPreviewIdx++;
+        }
 
-          // Final: 50m 직전 실행
-          while (nextFinalIdx < steps.length && routePositionM >= steps[nextFinalIdx].distanceFromStartM - TURN_FINAL_M) {
-            speak(steps[nextFinalIdx].instruction);
-            setCurrentInstruction(steps[nextFinalIdx].instruction);
-            setCurrentModifier(steps[nextFinalIdx].modifier);
-            nextFinalIdx = Math.max(nextFinalIdx + 1, nextPreviewIdx);
-            setTimeout(() => { setCurrentInstruction(null); setCurrentModifier(undefined); }, 5000);
-          }
+        // Final: TURN_FINAL_M 직전 실행 — 5초 뒤 자동 클리어
+        while (nextFinalIdx < steps.length && routePositionM >= steps[nextFinalIdx].distanceFromStartM - TURN_FINAL_M) {
+          const finalClean = cleanInstruction(steps[nextFinalIdx].instruction);
+          if (settingsRef.current.voiceEnabled) { speak(finalClean); }
+          if (instructionClearTimerRef.current) { clearTimeout(instructionClearTimerRef.current); instructionClearTimerRef.current = null; }
+          setCurrentInstruction(finalClean);
+          setCurrentModifier(steps[nextFinalIdx].modifier);
+          nextFinalIdx = Math.max(nextFinalIdx + 1, nextPreviewIdx);
+          instructionClearTimerRef.current = setTimeout(() => {
+            setCurrentInstruction(null);
+            setCurrentModifier(undefined);
+            instructionClearTimerRef.current = null;
+          }, 5000);
+        }
 
+        if (settingsRef.current.voiceEnabled) {
           // KM milestone (chatty) — suppressed once finish countdown begins
           if (settingsRef.current.voiceFrequency === 'chatty') {
             const kmMilestone = Math.floor(routePositionM / 1000);
@@ -526,6 +538,7 @@ export function RunScreen() {
       Speech.stop();
       if (offRouteTimerRef.current) { clearTimeout(offRouteTimerRef.current); offRouteTimerRef.current = null; }
       if (onRouteTimerRef.current) { clearTimeout(onRouteTimerRef.current); onRouteTimerRef.current = null; }
+      if (instructionClearTimerRef.current) { clearTimeout(instructionClearTimerRef.current); instructionClearTimerRef.current = null; }
     };
   }, [isRunning, route]);
 
