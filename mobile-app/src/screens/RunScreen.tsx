@@ -512,6 +512,7 @@ export function RunScreen() {
     setCoveredKm(0);
     setElapsedSeconds(0);
     setCurrentInstruction(null);
+    setCurrentTurnDistM(null);
     setSimulatedLocation(location);
     setIsPaused(false);
     slideY.setValue(0);
