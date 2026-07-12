@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { RunCard } from '../components/RunCard';
 import { RunDetailModal } from '../components/RunDetailModal';
@@ -11,6 +11,12 @@ export function HomeScreen() {
   const { history, loading, refresh, removeRecord, renameRecord } = useRunHistory();
   const [detailRecord, setDetailRecord] = useState<RunRecord | null>(null);
   const [areas, setAreas] = useState<Area[]>([]);
+  const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null);
+
+  const areasWithRuns = areas.filter(a => history.some(r => r.areaId === a.id));
+  const filteredHistory = selectedAreaId
+    ? history.filter(r => r.areaId === selectedAreaId)
+    : history;
 
   useFocusEffect(useCallback(() => {
     refresh();
@@ -48,19 +54,47 @@ export function HomeScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>Discoveries</Text>
         {history.length > 0 && (
-          <Text style={styles.subtitle}>{history.length} run{history.length !== 1 ? 's' : ''} recorded</Text>
+          <Text style={styles.subtitle}>{filteredHistory.length} run{filteredHistory.length !== 1 ? 's' : ''} recorded</Text>
         )}
       </View>
 
-      {history.length === 0 ? (
+      {areasWithRuns.length > 0 && (
+        <View style={styles.filterBar}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filterBarContent}
+          >
+            <TouchableOpacity
+              style={[styles.filterChip, selectedAreaId === null && styles.filterChipActive]}
+              onPress={() => setSelectedAreaId(null)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.filterChipText, selectedAreaId === null && styles.filterChipTextActive]}>전체</Text>
+            </TouchableOpacity>
+            {areasWithRuns.map(area => (
+              <TouchableOpacity
+                key={area.id}
+                style={[styles.filterChip, selectedAreaId === area.id && styles.filterChipActive]}
+                onPress={() => setSelectedAreaId(area.id)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.filterChipText, selectedAreaId === area.id && styles.filterChipTextActive]}>{area.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+
+      {filteredHistory.length === 0 ? (
         <View style={styles.empty}>
           <Text style={styles.emptyEmoji}>🏃</Text>
-          <Text style={styles.emptyTitle}>No runs yet</Text>
-          <Text style={styles.emptySubtitle}>Complete your first run to see it here</Text>
+          <Text style={styles.emptyTitle}>{selectedAreaId ? 'No runs in this area' : 'No runs yet'}</Text>
+          <Text style={styles.emptySubtitle}>{selectedAreaId ? 'Try selecting a different area' : 'Complete your first run to see it here'}</Text>
         </View>
       ) : (
         <FlatList
-          data={history}
+          data={filteredHistory}
           keyExtractor={(item: RunRecord) => item.id}
           renderItem={({ item }) => (
             <RunCard record={item} onPress={() => setDetailRecord(item)} />
@@ -96,6 +130,19 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 28, fontWeight: '800', color: '#1A1A1A' },
   subtitle: { fontSize: 14, color: '#BDBDBD', marginTop: 4 },
+  filterBar: { backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F0F0F0' },
+  filterBarContent: { paddingHorizontal: 16, paddingVertical: 10, gap: 8, flexDirection: 'row', alignItems: 'center' },
+  filterChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: '#F5F5F5',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  filterChipActive: { backgroundColor: '#1A1A1A', borderColor: '#1A1A1A' },
+  filterChipText: { fontSize: 13, fontWeight: '600', color: '#888' },
+  filterChipTextActive: { color: '#fff' },
   list: { paddingTop: 16, paddingBottom: 32 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
