@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { Alert, Image, Modal, NativeModules, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { captureRef } from 'react-native-view-shot';
 
 function isNativeAvailable(): boolean {
@@ -72,6 +73,7 @@ function buildMapUrl(area: Area, todayIdSet: Set<string>, token: string): string
 export function ShareCardModal({ visible, onClose, area, todayColoredIds, coveredKm, earnedBadge }: Props) {
   const cardRef = useRef<View>(null);
   const [busy, setBusy] = useState(false);
+  const insets = useSafeAreaInsets();
 
   const todayIdSet = useMemo(() => new Set(todayColoredIds), [todayColoredIds]);
   const existingSet = useMemo(() => new Set(area.coloredSegmentIds), [area]);
@@ -212,7 +214,7 @@ export function ShareCardModal({ visible, onClose, area, todayColoredIds, covere
         </View>
 
         {/* Action buttons */}
-        <View style={styles.actions}>
+        <View style={[styles.actions, { paddingBottom: insets.bottom + 16 }]}>
           <TouchableOpacity style={styles.saveBtn} onPress={handleSave} disabled={busy} activeOpacity={0.8}>
             <Text style={styles.saveBtnText}>💾  Save to Gallery</Text>
           </TouchableOpacity>
@@ -273,9 +275,9 @@ const styles = StyleSheet.create({
   badgePillText: { fontSize: 9.5, fontWeight: '600', color: '#FF6B6B' },
   earnedLabel: { fontSize: 8, color: 'rgba(255,255,255,0.34)', letterSpacing: 0.5 },
   logoText: { fontSize: 10, fontWeight: '800', letterSpacing: 3.5, color: '#fff' },
-  actions: { paddingHorizontal: 20, paddingBottom: 40, gap: 10 },
+  actions: { paddingHorizontal: 20, paddingBottom: 16, gap: 10 },
   saveBtn: { backgroundColor: '#fff', borderRadius: 14, paddingVertical: 14, alignItems: 'center' },
-  saveBtnText: { fontSize: 15, fontWeight: '700', color: '#0a0a0b' },
+  saveBtnText: { fontSize: 15, fontWeight: '700', color: '#0a0a0b', textAlign: 'center' },
   shareBtn: {
     backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 14, paddingVertical: 14,
     alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)',
