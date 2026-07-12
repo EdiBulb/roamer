@@ -1,4 +1,5 @@
 import { Animated, KeyboardAvoidingView, Modal, Platform, PanResponder, ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
 
@@ -100,6 +101,7 @@ function getRoutePosition(
 }
 
 export function RunScreen() {
+  const insets = useSafeAreaInsets();
   const { advance, isActive } = useTutorial();
   const { settings } = useSettings();
   const { history, refresh: refreshHistory } = useRunHistory();
@@ -685,7 +687,7 @@ export function RunScreen() {
         {/* ── My Areas button (idle, not running) ── */}
         {!isRunning && displayLocation && (
           <TouchableOpacity
-            style={styles.areaBtn}
+            style={[styles.areaBtn, { top: insets.top + 8 }]}
             onPress={() => setShowMyAreas(true)}
             activeOpacity={0.85}
           >
@@ -735,7 +737,7 @@ export function RunScreen() {
         />
 
 {isRunning && isOffRoute && (
-          <View style={styles.offRouteBanner}>
+          <View style={[styles.offRouteBanner, { top: insets.top + 8 }]}>
             <Text style={styles.offRouteBannerText}>Off route</Text>
             <TouchableOpacity style={styles.myWayBtn} onPress={handleMyWay} activeOpacity={0.8}>
               <Text style={styles.myWayBtnText}>My Way</Text>
@@ -743,12 +745,12 @@ export function RunScreen() {
           </View>
         )}
         {isRunning && isMyWayMode && (
-          <View style={styles.myWayBadge}>
+          <View style={[styles.myWayBadge, { top: insets.top + 8 }]}>
             <Text style={styles.myWayBadgeText}>My Way 🏃</Text>
           </View>
         )}
         {isRunning && currentInstruction && !isOffRoute && !isMyWayMode && (
-          <View style={styles.instructionOverlay}>
+          <View style={[styles.instructionOverlay, { top: insets.top + 8 }]}>
             <Text style={styles.instructionOverlayText}>
               {getDirectionIcon(currentModifier)}  {currentInstruction}{currentTurnDistM ? `  —  ${currentTurnDistM}m` : ''}
             </Text>

@@ -1,6 +1,7 @@
 import MapboxGL from '@rnmapbox/maps';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Magnetometer } from 'expo-sensors';
 import { MAPBOX_TOKEN, DEFAULT_ZOOM } from '../constants';
 import { getBoundingBox } from '../services/mapboxApi';
@@ -107,6 +108,7 @@ export function MapDisplay({
   activeAreaId = null,
   liveColoredIds,
 }: Props) {
+  const insets = useSafeAreaInsets();
   const center: [number, number] = [location.longitude, location.latitude];
   const cameraRef = useRef<MapboxGL.Camera>(null);
   const mapRef = useRef<MapboxGL.MapView>(null);
@@ -326,6 +328,7 @@ export function MapDisplay({
         ref={mapRef}
         style={styles.map}
         styleURL={MapboxGL.StyleURL.Street}
+        scaleBarPosition={{ top: insets.top + 8, left: 8 }}
         onPress={handlePress}
         onDidFinishLoadingMap={() => recalcArrowPos()}
         onRegionDidChange={(feature) => {

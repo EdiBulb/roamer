@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
-import { Alert, Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Image, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { MAPBOX_TOKEN } from '../constants';
 import { Coordinate, RunRecord } from '../types';
 import { updateRunMemo } from '../services/storage';
@@ -56,6 +57,9 @@ function buildMapUrl(record: RunRecord): string | null {
 export function RunDetailModal({ record, areaName, onClose, onMemoSaved, onRename, onDelete }: Props) {
   const [editName, setEditName] = useState(record?.name ?? '');
   const [memo, setMemo] = useState(record?.memo ?? '');
+  const [notesEditing, setNotesEditing] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const scrollRef = useRef<ScrollView>(null);
   const nameDirty = editName.trim() !== record?.name && editName.trim().length > 0;
 
   if (!record) return null;
@@ -75,23 +79,13 @@ export function RunDetailModal({ record, areaName, onClose, onMemoSaved, onRenam
   }
 
   function handleDelete() {
-    Alert.alert(
-      'Delete run?',
-      `"${record!.name}" will be permanently deleted.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => { onDelete(record!.id); onClose(); },
-        },
-      ],
-    );
+    setShowDeleteModal(true);
   }
 
   return (
     <Modal visible animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <View style={styles.container}>
+      <SafeAreaView style={styles.container}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.closeBtn} onPress={onClose} activeOpacity={0.7}>
@@ -120,7 +114,14 @@ export function RunDetailModal({ record, areaName, onClose, onMemoSaved, onRenam
           </View>
         </View>
 
-        <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          ref={scrollRef}
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          automaticallyAdjustKeyboardInsets={true}
+          keyboardShouldPersistTaps="handled"
+        >
           {/* Map */}
           <View style={styles.mapContainer}>
             {mapUrl ? (
@@ -169,6 +170,8 @@ export function RunDetailModal({ record, areaName, onClose, onMemoSaved, onRenam
               multiline
               numberOfLines={4}
               textAlignVertical="top"
+              onFocus={() => setNotesEditing(true)}
+              onBlur={() => setNotesEditing(false)}
             />
             <TouchableOpacity style={styles.memoSaveBtn} onPress={handleSaveMemo} activeOpacity={0.8}>
               <Text style={styles.memoSaveBtnText}>Save Note</Text>
@@ -176,17 +179,42 @@ export function RunDetailModal({ record, areaName, onClose, onMemoSaved, onRenam
           </View>
 
           {/* Delete */}
-          <TouchableOpacity style={styles.deleteBtn} onPress={handleDelete} activeOpacity={0.8}>
-            <Text style={styles.deleteBtnText}>Delete Run</Text>
-          </TouchableOpacity>
+          {!notesEditing && (
+            <TouchableOpacity style={styles.deleteBtn} onPress={handleDelete} activeOpacity={0.8}>
+              <Text style={styles.deleteBtnText}>Delete Run</Text>
+            </TouchableOpacity>
+          )}
         </ScrollView>
-      </View>
+        </KeyboardAvoidingView>
+
+        <Modal visible={showDeleteModal} transparent animationType="fade" onRequestClose={() => setShowDeleteModal(false)}>
+          <View style={styles.deleteBackdrop}>
+            <View style={styles.deleteCard}>
+              <Text style={styles.deleteCardIcon}>🗑️</Text>
+              <Text style={styles.deleteCardTitle}>Delete this run?</Text>
+              <Text style={styles.deleteCardName}>{record.name}</Text>
+              <Text style={styles.deleteCardSub}>This can't be undone.</Text>
+              <TouchableOpacity
+                style={styles.deleteCardConfirm}
+                onPress={() => { setShowDeleteModal(false); onDelete(record.id); onClose(); }}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.deleteCardConfirmText}>Delete Run</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setShowDeleteModal(false)} activeOpacity={0.7}>
+                <Text style={styles.deleteCardCancel}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      </SafeAreaView>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
+  keyboardView: { flex: 1 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -290,13 +318,40 @@ const styles = StyleSheet.create({
   },
   memoSaveBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
   deleteBtn: {
-    marginHorizontal: 16,
-    marginTop: 12,
-    borderWidth: 1.5,
-    borderColor: '#E53935',
-    borderRadius: 16,
-    paddingVertical: 14,
+    marginTop: 8,
+    marginBottom: 8,
     alignItems: 'center',
+    paddingVertical: 10,
   },
-  deleteBtnText: { color: '#E53935', fontSize: 15, fontWeight: '700' },
+  deleteBtnText: { color: '#BDBDBD', fontSize: 13 },
+  deleteBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+  },
+  deleteCard: {
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    paddingVertical: 32,
+    paddingHorizontal: 28,
+    width: '100%',
+    alignItems: 'center',
+    gap: 6,
+  },
+  deleteCardIcon: { fontSize: 32, marginBottom: 4 },
+  deleteCardTitle: { fontSize: 20, fontWeight: '700', color: '#1A1A1A' },
+  deleteCardName: { fontSize: 14, color: '#888', marginBottom: 2 },
+  deleteCardSub: { fontSize: 13, color: '#BDBDBD', marginBottom: 8 },
+  deleteCardConfirm: {
+    backgroundColor: '#E53935',
+    paddingVertical: 14,
+    borderRadius: 28,
+    alignItems: 'center',
+    width: '100%',
+    marginTop: 4,
+  },
+  deleteCardConfirmText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  deleteCardCancel: { fontSize: 14, color: '#888', marginTop: 8 },
 });
