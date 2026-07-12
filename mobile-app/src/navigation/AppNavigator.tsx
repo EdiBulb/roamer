@@ -61,7 +61,7 @@ export function AppNavigator() {
           tabBarIcon: ({ focused }) => (
             <Image
               source={focused ? icons.discoveries.active : icons.discoveries.inactive}
-              style={{ width: 100, height: 100 }}
+              style={{ width: 100, height: 100, transform: [{ scale: focused ? 1 : 1 }] }}
               resizeMode="contain"
             />
           ),
@@ -75,7 +75,7 @@ export function AppNavigator() {
           tabBarIcon: ({ focused }) => (
             <Image
               source={focused ? icons.journey.active : icons.journey.inactive}
-              style={{ width: 100, height: 100 }}
+              style={{ width: 100, height: 100, transform: [{ scale: focused ? 0.87 : 1 }] }}
               resizeMode="contain"
             />
           ),
@@ -89,7 +89,7 @@ export function AppNavigator() {
           tabBarIcon: ({ focused }) => (
             <Image
               source={focused ? icons.trail.active : icons.trail.inactive}
-              style={{ width: 100, height: 100 }}
+              style={{ width: 100, height: 100, transform: [{ scale: focused ? 0.80 : 1 }] }}
               resizeMode="contain"
             />
           ),
