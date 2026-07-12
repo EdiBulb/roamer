@@ -1,8 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { Alert, Image, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
-import * as MediaLibrary from 'expo-media-library';
-import * as Sharing from 'expo-sharing';
 import { MAPBOX_TOKEN } from '../constants';
 import { Area, Badge, Coordinate } from '../types';
 
@@ -100,14 +98,19 @@ export function ShareCardModal({ visible, onClose, area, todayColoredIds, covere
     setBusy(true);
     const uri = await doCapture();
     if (!uri) { setBusy(false); return; }
-    const { granted } = await MediaLibrary.requestPermissionsAsync();
-    if (!granted) {
-      Alert.alert('Permission required', 'Please allow access to your photo library.');
-      setBusy(false);
-      return;
+    try {
+      const MediaLibrary = await import('expo-media-library');
+      const { granted } = await MediaLibrary.requestPermissionsAsync();
+      if (!granted) {
+        Alert.alert('Permission required', 'Please allow access to your photo library.');
+        setBusy(false);
+        return;
+      }
+      await MediaLibrary.saveToLibraryAsync(uri);
+      Alert.alert('Saved! 🎉', 'Share card saved to your camera roll.');
+    } catch {
+      Alert.alert('Not available', 'Please update the app to enable saving.');
     }
-    await MediaLibrary.saveToLibraryAsync(uri);
-    Alert.alert('Saved! 🎉', 'Share card saved to your camera roll.');
     setBusy(false);
   }
 
@@ -115,8 +118,13 @@ export function ShareCardModal({ visible, onClose, area, todayColoredIds, covere
     setBusy(true);
     const uri = await doCapture();
     if (!uri) { setBusy(false); return; }
-    if (await Sharing.isAvailableAsync()) {
-      await Sharing.shareAsync(uri, { mimeType: 'image/png', dialogTitle: 'Share your Roamer run!' });
+    try {
+      const Sharing = await import('expo-sharing');
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, { mimeType: 'image/png', dialogTitle: 'Share your Roamer run!' });
+      }
+    } catch {
+      Alert.alert('Not available', 'Please update the app to enable sharing.');
     }
     setBusy(false);
   }
