@@ -921,7 +921,7 @@ const styles = StyleSheet.create({
   areaBtn: {
     position: 'absolute',
     top: 16,
-    left: 16,
+    right: 16,
     backgroundColor: '#fff',
     borderRadius: 14,
     paddingVertical: 8,
