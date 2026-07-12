@@ -205,6 +205,8 @@ export function RunScreen() {
     },
   })).current;
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const elapsedSecondsRef = useRef(0);
+  useEffect(() => { elapsedSecondsRef.current = elapsedSeconds; }, [elapsedSeconds]);
   const [simulatedLocation, setSimulatedLocation] = useState<Coordinate | null>(null);
   const [currentInstruction, setCurrentInstruction] = useState<string | null>(null);
   const [currentTurnDistM, setCurrentTurnDistM] = useState<number | null>(null);
@@ -237,7 +239,6 @@ export function RunScreen() {
     let prevCoord: Coordinate | null = null;
     let localCoveredM = 0;
     let lastAnnouncedKmMilestone = 0;
-    const runStartTime = Date.now();
     let lastVoiceTime = 0;
     let routeSnapIdx = 0;
     let routePositionM = 0;
@@ -422,7 +423,7 @@ export function RunScreen() {
             const kmMilestone = Math.floor(routePositionM / 1000);
             const inFinishZone = FINISH_MILESTONES.length > 0 && remainingM <= FINISH_MILESTONES[0];
             if (kmMilestone > lastAnnouncedKmMilestone && kmMilestone > 0 && !inFinishZone) {
-              const elapsedSec = (Date.now() - runStartTime) / 1000;
+              const elapsedSec = elapsedSecondsRef.current;
               const paceSecPerKm = elapsedSec / (localCoveredM / 1000);
               const paceMin = Math.floor(paceSecPerKm / 60);
               const paceSec = Math.round(paceSecPerKm % 60);
