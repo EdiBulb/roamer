@@ -103,7 +103,8 @@ export function CalendarScreen() {
   }, [refresh]));
 
   const markedDates = history.reduce<Record<string, { marked: boolean; dotColor: string; selected?: boolean; selectedColor?: string }>>((acc, record) => {
-    const dateStr = record.date.slice(0, 10);
+    const d = new Date(record.date);
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     acc[dateStr] = { marked: true, dotColor: '#4CAF50', selected: true, selectedColor: '#E8F5E9' };
     return acc;
   }, {});
@@ -111,7 +112,11 @@ export function CalendarScreen() {
   // This month stats
   const now = new Date();
   const thisMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  const monthHistory = history.filter((r) => r.date.startsWith(thisMonthStr));
+  const monthHistory = history.filter((r) => {
+    const d = new Date(r.date);
+    const localMonthStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    return localMonthStr === thisMonthStr;
+  });
   const monthRuns = monthHistory.length;
   const monthKm = monthHistory.reduce((sum, r) => sum + r.distanceKm, 0);
   const monthSeconds = monthHistory.reduce((sum, r) => sum + r.elapsedSeconds, 0);
@@ -120,7 +125,10 @@ export function CalendarScreen() {
   const totalRuns = history.length;
   const totalKm = history.reduce((sum, r) => sum + r.distanceKm, 0);
   const totalSeconds = history.reduce((sum, r) => sum + r.elapsedSeconds, 0);
-  const activeDays = new Set(history.map((r) => r.date.slice(0, 10))).size;
+  const activeDays = new Set(history.map((r) => {
+    const d = new Date(r.date);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  })).size;
 
   const monthName = now.toLocaleDateString('en-US', { month: 'long' });
 
