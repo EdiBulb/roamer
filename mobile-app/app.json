@@ -25,6 +25,12 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      ["expo-media-library", {
+        "photosPermission": "Allow Roamer to save share cards to your photo library.",
+        "savePhotosPermission": "Allow Roamer to save share cards to your photo library."
+      }]
+    ]
   }
 }

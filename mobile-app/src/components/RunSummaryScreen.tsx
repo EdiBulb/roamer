@@ -9,6 +9,7 @@ import { findNewStreets, getTotalExploredCount, saveNewStreets } from '../servic
 import { getNewlyEarnedBadges } from '../services/badges';
 import { matchTraceToSegments } from '../services/overpassApi';
 import { setAreaConquered, updateAreaColoredSegments } from '../services/areaStorage';
+import { ShareCardModal } from './ShareCardModal';
 
 MapboxGL.setAccessToken(MAPBOX_TOKEN);
 
@@ -63,6 +64,8 @@ export function RunSummaryScreen({ coveredKm, elapsedSeconds, route, onHome, act
   const [saved, setSaved] = useState(false);
   const [savedNewStreets, setSavedNewStreets] = useState<string[]>([]);
   const [showConquest, setShowConquest] = useState(false);
+  const [savedColoredIds, setSavedColoredIds] = useState<string[]>([]);
+  const [showShareCard, setShowShareCard] = useState(false);
   const flagScale = useRef(new Animated.Value(0)).current;
   const flagOpacity = useRef(new Animated.Value(0)).current;
 
@@ -149,6 +152,7 @@ export function RunSummaryScreen({ coveredKm, elapsedSeconds, route, onHome, act
 
     setNewStreetCount(newStreets.length);
     setSavedNewStreets(newStreets);
+    setSavedColoredIds(mergedColoredIds);
     setSaved(true);
     if (earned.length > 0) {
       setNewBadges(earned);
@@ -162,6 +166,7 @@ export function RunSummaryScreen({ coveredKm, elapsedSeconds, route, onHome, act
   }
 
   return (
+    <>
     <ScrollView style={styles.container} contentContainerStyle={styles.content} bounces={false}>
       {/* Header */}
       <View style={styles.header}>
@@ -248,6 +253,17 @@ export function RunSummaryScreen({ coveredKm, elapsedSeconds, route, onHome, act
         <Text style={styles.saveButtonText}>{saved ? 'Done' : 'Save & Go Home'}</Text>
       </TouchableOpacity>
 
+      {/* Share card button — only after save and only if an area was active */}
+      {saved && activeArea && (
+        <TouchableOpacity
+          style={styles.shareCardButton}
+          onPress={() => setShowShareCard(true)}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.shareCardButtonText}>📷  Share this run</Text>
+        </TouchableOpacity>
+      )}
+
       {/* Conquest celebration modal */}
       <Modal visible={showConquest} transparent animationType="fade">
         <View style={styles.conquestOverlay}>
@@ -289,6 +305,18 @@ export function RunSummaryScreen({ coveredKm, elapsedSeconds, route, onHome, act
         </View>
       </Modal>
     </ScrollView>
+
+    {activeArea && (
+      <ShareCardModal
+        visible={showShareCard}
+        onClose={() => setShowShareCard(false)}
+        area={activeArea}
+        todayColoredIds={savedColoredIds}
+        coveredKm={coveredKm}
+        earnedBadge={newBadges[newBadges.length - 1] ?? null}
+      />
+    )}
+    </>
   );
 }
 
@@ -348,13 +376,24 @@ const styles = StyleSheet.create({
   map: { flex: 1 },
   saveButton: {
     backgroundColor: '#4CAF50',
-    margin: 24,
-    marginBottom: 56,
+    marginHorizontal: 24,
+    marginTop: 24,
     paddingVertical: 16,
     borderRadius: 28,
     alignItems: 'center',
   },
   saveButtonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  shareCardButton: {
+    marginHorizontal: 24,
+    marginTop: 10,
+    marginBottom: 56,
+    paddingVertical: 14,
+    borderRadius: 28,
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#E0E0E0',
+  },
+  shareCardButtonText: { color: '#555', fontSize: 15, fontWeight: '600' },
   // Conquest modal
   conquestOverlay: {
     flex: 1,
