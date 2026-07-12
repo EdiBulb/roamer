@@ -414,6 +414,7 @@ export function RunScreen() {
             speak(steps[nextFinalIdx].instruction);
             setCurrentInstruction(steps[nextFinalIdx].instruction);
             nextFinalIdx = Math.max(nextFinalIdx + 1, nextPreviewIdx);
+            setTimeout(() => setCurrentInstruction(null), 5000);
           }
 
           // KM milestone (chatty) — suppressed once finish countdown begins
