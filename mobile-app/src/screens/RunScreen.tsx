@@ -230,7 +230,7 @@ export function RunScreen() {
     const OFF_ROUTE_DEBOUNCE_MS = 6_000;
     const ON_ROUTE_DEBOUNCE_MS = 5_000;
     const TURN_PREVIEW_M = 200;
-    const TURN_FINAL_M = 50;
+    const TURN_FINAL_M = settingsRef.current.announceDistanceM;
     const WP_PREVIEW_M = 150;
     const SILENCE_MS = 60_000;
 
