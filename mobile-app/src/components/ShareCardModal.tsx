@@ -1,6 +1,14 @@
 import { useMemo, useRef, useState } from 'react';
-import { Alert, Image, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, Modal, NativeModules, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
+
+function isNativeAvailable(): boolean {
+  return !!(
+    NativeModules.ExpoMediaLibrary ||
+    NativeModules.ExpoMediaLibraryNext ||
+    NativeModules.RNMediaLibrary
+  );
+}
 import { MAPBOX_TOKEN } from '../constants';
 import { Area, Badge, Coordinate } from '../types';
 
@@ -95,6 +103,10 @@ export function ShareCardModal({ visible, onClose, area, todayColoredIds, covere
   }
 
   async function handleSave() {
+    if (!isNativeAvailable()) {
+      Alert.alert('EAS 빌드 필요', 'Save 기능은 앱 업데이트 후 사용 가능해요.');
+      return;
+    }
     setBusy(true);
     const uri = await doCapture();
     if (!uri) { setBusy(false); return; }
@@ -108,13 +120,17 @@ export function ShareCardModal({ visible, onClose, area, todayColoredIds, covere
       }
       await MediaLibrary.saveToLibraryAsync(uri);
       Alert.alert('Saved! 🎉', 'Share card saved to your camera roll.');
-    } catch {
-      Alert.alert('Not available', 'Please update the app to enable saving.');
+    } catch (e) {
+      Alert.alert('Error', String(e));
     }
     setBusy(false);
   }
 
   async function handleShare() {
+    if (!isNativeAvailable()) {
+      Alert.alert('EAS 빌드 필요', 'Share 기능은 앱 업데이트 후 사용 가능해요.');
+      return;
+    }
     setBusy(true);
     const uri = await doCapture();
     if (!uri) { setBusy(false); return; }
@@ -123,8 +139,8 @@ export function ShareCardModal({ visible, onClose, area, todayColoredIds, covere
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(uri, { mimeType: 'image/png', dialogTitle: 'Share your Roamer run!' });
       }
-    } catch {
-      Alert.alert('Not available', 'Please update the app to enable sharing.');
+    } catch (e) {
+      Alert.alert('Error', String(e));
     }
     setBusy(false);
   }
