@@ -472,9 +472,7 @@ export function RunScreen() {
                     if (rel < 225) return ' 뒤쪽으로 돌아가세요.';
                     return ' 왼쪽으로 돌아가세요.';
                   })();
-                  Speech.stop();
-                  Speech.speak(`루트를 벗어났습니다.${direction}`, { language: 'ko' });
-                  lastVoiceTime = Date.now();
+                  speak(`루트를 벗어났습니다.${direction}`);
                 }
                 offRouteTimerRef.current = null;
               }, OFF_ROUTE_DEBOUNCE_MS);
@@ -485,11 +483,7 @@ export function RunScreen() {
               onRouteTimerRef.current = setTimeout(() => {
                 setIsOffRoute(false);
                 isOffRouteRef.current = false;
-                if (settingsRef.current.voiceEnabled) {
-                  Speech.stop();
-                  Speech.speak('루트로 돌아왔습니다.', { language: 'ko' });
-                  lastVoiceTime = Date.now();
-                }
+                speak('루트로 돌아왔습니다.');
                 onRouteTimerRef.current = null;
               }, ON_ROUTE_DEBOUNCE_MS);
             }
