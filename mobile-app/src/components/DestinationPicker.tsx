@@ -14,10 +14,11 @@ import { MAPBOX_TOKEN } from '../constants';
 import { useSavedPlaces } from '../hooks/useSavedPlaces';
 import { Coordinate } from '../types';
 
-interface GeocodingFeature {
-  id: string;
-  place_name: string;
-  center: [number, number];
+interface SearchSuggestion {
+  mapbox_id: string;
+  name: string;
+  place_formatted: string;
+  full_address?: string;
 }
 
 interface Props {
@@ -28,11 +29,12 @@ interface Props {
 
 export function DestinationPicker({ userLocation, onSelect, onSavePrompt }: Props) {
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<GeocodingFeature[]>([]);
+  const [results, setResults] = useState<SearchSuggestion[]>([]);
   const [searching, setSearching] = useState(false);
   const [countryCode, setCountryCode] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sessionToken = useRef(`${Math.random().toString(36).slice(2)}-${Date.now()}`);
   const { places, remove } = useSavedPlaces();
 
   useEffect(() => {
@@ -58,10 +60,10 @@ export function DestinationPicker({ userLocation, onSelect, onSavePrompt }: Prop
       try {
         const proximity = `${userLocation.longitude},${userLocation.latitude}`;
         const countryParam = countryCode ? `&country=${countryCode}` : '';
-        const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(trimmed)}.json?proximity=${proximity}&types=place,address,poi&limit=5${countryParam}&access_token=${MAPBOX_TOKEN}`;
+        const url = `https://api.mapbox.com/search/searchbox/v1/suggest?q=${encodeURIComponent(trimmed)}&language=en&limit=7&proximity=${proximity}${countryParam}&session_token=${sessionToken.current}&access_token=${MAPBOX_TOKEN}`;
         const res = await fetch(url);
         const data = await res.json();
-        setResults(data.features ?? []);
+        setResults(data.suggestions ?? []);
       } catch {
         setResults([]);
       } finally {
@@ -72,13 +74,23 @@ export function DestinationPicker({ userLocation, onSelect, onSavePrompt }: Prop
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [query, userLocation, countryCode]);
 
-  function handleSelect(coord: Coordinate, label: string) {
+  async function handleSuggestionSelect(suggestion: SearchSuggestion) {
     Keyboard.dismiss();
     setQuery('');
     setResults([]);
-    onSelect(coord, label);
-    const alreadySaved = places.some(p => p.coord.latitude === coord.latitude && p.coord.longitude === coord.longitude);
-    if (!alreadySaved) onSavePrompt?.(coord, label);
+    try {
+      const url = `https://api.mapbox.com/search/searchbox/v1/retrieve/${suggestion.mapbox_id}?session_token=${sessionToken.current}&access_token=${MAPBOX_TOKEN}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      const feature = data.features?.[0];
+      if (!feature) return;
+      const [longitude, latitude] = feature.geometry.coordinates;
+      const label = suggestion.name;
+      const coord: Coordinate = { latitude, longitude };
+      onSelect(coord, label);
+      const alreadySaved = places.some(p => p.coord.latitude === coord.latitude && p.coord.longitude === coord.longitude);
+      if (!alreadySaved) onSavePrompt?.(coord, label);
+    } catch {}
   }
 
   function handleConfirmDelete() {
@@ -112,19 +124,19 @@ export function DestinationPicker({ userLocation, onSelect, onSavePrompt }: Prop
       {/* Autocomplete results */}
       {results.length > 0 && (
         <View style={styles.resultsList}>
-          {results.map((item) => {
-            const coord: Coordinate = { latitude: item.center[1], longitude: item.center[0] };
-            return (
-              <TouchableOpacity
-                key={item.id}
-                style={styles.resultRow}
-                onPress={() => handleSelect(coord, item.place_name)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.resultText} numberOfLines={1}>{item.place_name}</Text>
-              </TouchableOpacity>
-            );
-          })}
+          {results.map((item) => (
+            <TouchableOpacity
+              key={item.mapbox_id}
+              style={styles.resultRow}
+              onPress={() => handleSuggestionSelect(item)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.resultText} numberOfLines={1}>{item.name}</Text>
+              {item.place_formatted ? (
+                <Text style={styles.resultSub} numberOfLines={1}>{item.place_formatted}</Text>
+              ) : null}
+            </TouchableOpacity>
+          ))}
         </View>
       )}
 
@@ -200,6 +212,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#F5F5F5',
   },
   resultText: { fontSize: 14, color: '#1A1A1A' },
+  resultSub: { fontSize: 12, color: '#888', marginTop: 2 },
   chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
     backgroundColor: '#F0F0F0',
