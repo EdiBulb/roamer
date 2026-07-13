@@ -1,7 +1,7 @@
 import { Animated, KeyboardAvoidingView, Modal, Platform, PanResponder, ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 const COLLAPSED_VISIBLE = 90;
 const CARD_COLLAPSED_VISIBLE = 80;
@@ -26,6 +26,7 @@ import { MyAreasSheet } from '../components/MyAreasSheet';
 import { FollowMode } from '../components/MapDisplay';
 import { loadAreas } from '../services/areaStorage';
 import { useSavedPlaces } from '../hooks/useSavedPlaces';
+import { classifyRouteCoordinates } from '../services/routeClassifier';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback } from 'react';
 
@@ -150,11 +151,18 @@ export function RunScreen() {
     setSaveLabel('');
   }
 
+
   const [difficulty, setDifficulty] = useState<Difficulty>('normal');
   const { route, status, generate, generateTight, clearRoute } = useRoute(location, selectedDistance, routeMode, destination, difficulty, activeArea);
   const [showDistanceModal, setShowDistanceModal] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
   const [isFinished, setIsFinished] = useState(false);
+
+  const routeClassification = useMemo(() => {
+    if (!route || !activeArea || isRunning) return undefined;
+    const exploredSegments = activeArea.segments.filter(s => activeArea.coloredSegmentIds.includes(s.id));
+    return classifyRouteCoordinates(route.coordinates, exploredSegments, activeArea.center, activeArea.radiusKm);
+  }, [route, activeArea?.coloredSegmentIds, isRunning]);
   const [isPaused, setIsPaused] = useState(false);
   const [followMode, setFollowMode] = useState<FollowMode>('follow');
   const [nextWaypointIndex, setNextWaypointIndex] = useState(0);
@@ -693,6 +701,8 @@ export function RunScreen() {
             areas={areas}
             activeAreaId={activeArea?.id ?? null}
             liveColoredIds={liveColoredIds}
+            routeClassification={routeClassification}
+            legendBottom={CARD_COLLAPSED_VISIBLE + 16}
           />
         )}
 

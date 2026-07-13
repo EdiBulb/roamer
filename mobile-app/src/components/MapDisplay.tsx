@@ -88,6 +88,8 @@ interface Props {
   areas?: Area[];
   activeAreaId?: string | null;
   liveColoredIds?: Set<string>;
+  routeClassification?: { overlapLines: Coordinate[][]; newLines: Coordinate[][]; outsideLines: Coordinate[][] };
+  legendBottom?: number;
 }
 
 export function MapDisplay({
@@ -107,6 +109,8 @@ export function MapDisplay({
   areas = [],
   activeAreaId = null,
   liveColoredIds,
+  routeClassification,
+  legendBottom = 16,
 }: Props) {
   const insets = useSafeAreaInsets();
   const center: [number, number] = [location.longitude, location.latitude];
@@ -312,7 +316,22 @@ export function MapDisplay({
   // ── static preview GeoJSON (not running) ─────────────────────────────────
 
   const previewGeoJSON: GeoJSON.Feature<GeoJSON.LineString> | null =
-    !isRunning && route ? toLineGeoJSON(route.coordinates) : null;
+    !isRunning && route && !routeClassification ? toLineGeoJSON(route.coordinates) : null;
+
+  const classifiedOverlapGeoJSON: GeoJSON.FeatureCollection<GeoJSON.LineString> | null =
+    !isRunning && routeClassification && routeClassification.overlapLines.length > 0
+      ? { type: 'FeatureCollection', features: routeClassification.overlapLines.map(toLineGeoJSON) }
+      : null;
+
+  const classifiedNewGeoJSON: GeoJSON.FeatureCollection<GeoJSON.LineString> | null =
+    !isRunning && routeClassification && routeClassification.newLines.length > 0
+      ? { type: 'FeatureCollection', features: routeClassification.newLines.map(toLineGeoJSON) }
+      : null;
+
+  const classifiedOutsideGeoJSON: GeoJSON.FeatureCollection<GeoJSON.LineString> | null =
+    !isRunning && routeClassification && routeClassification.outsideLines.length > 0
+      ? { type: 'FeatureCollection', features: routeClassification.outsideLines.map(toLineGeoJSON) }
+      : null;
 
   // ── map press handler ─────────────────────────────────────────────────────
 
@@ -405,7 +424,7 @@ export function MapDisplay({
             <MapboxGL.ShapeSource id="area-existing" shape={areaSegmentGeoJSON.existing}>
               <MapboxGL.LineLayer
                 id="area-existing-line"
-                style={{ lineColor: '#4CAF50', lineWidth: 4, lineJoin: 'round', lineCap: 'round', lineOpacity: 0.9 }}
+                style={{ lineColor: routeClassification ? '#A5D6A7' : '#4CAF50', lineWidth: 4, lineJoin: 'round', lineCap: 'round', lineOpacity: 0.9 }}
               />
             </MapboxGL.ShapeSource>
             <MapboxGL.ShapeSource id="area-fresh" shape={areaSegmentGeoJSON.fresh}>
@@ -427,12 +446,42 @@ export function MapDisplay({
           </MapboxGL.ShapeSource>
         )}
 
-        {/* ── route: preview (not running) ── */}
+        {/* ── route: preview single-color (no classification) ── */}
         {previewGeoJSON && (
           <MapboxGL.ShapeSource id="route-preview" shape={previewGeoJSON}>
             <MapboxGL.LineLayer
               id="route-preview-line"
               style={{ lineColor: '#4CAF50', lineWidth: 4, lineJoin: 'round', lineCap: 'round' }}
+            />
+          </MapboxGL.ShapeSource>
+        )}
+
+        {/* ── route: classified overlap (dark green = revisiting) ── */}
+        {classifiedOverlapGeoJSON && (
+          <MapboxGL.ShapeSource id="route-overlap" shape={classifiedOverlapGeoJSON}>
+            <MapboxGL.LineLayer
+              id="route-overlap-line"
+              style={{ lineColor: '#2E7D32', lineWidth: 5, lineJoin: 'round', lineCap: 'round', lineOpacity: 0.95 }}
+            />
+          </MapboxGL.ShapeSource>
+        )}
+
+        {/* ── route: classified new (coral = first time) ── */}
+        {classifiedNewGeoJSON && (
+          <MapboxGL.ShapeSource id="route-new" shape={classifiedNewGeoJSON}>
+            <MapboxGL.LineLayer
+              id="route-new-line"
+              style={{ lineColor: '#FF6B6B', lineWidth: 5, lineJoin: 'round', lineCap: 'round', lineOpacity: 0.95 }}
+            />
+          </MapboxGL.ShapeSource>
+        )}
+
+        {/* ── route: outside area (blue = beyond area boundary) ── */}
+        {classifiedOutsideGeoJSON && (
+          <MapboxGL.ShapeSource id="route-outside" shape={classifiedOutsideGeoJSON}>
+            <MapboxGL.LineLayer
+              id="route-outside-line"
+              style={{ lineColor: '#42A5F5', lineWidth: 5, lineJoin: 'round', lineCap: 'round', lineOpacity: 0.95 }}
             />
           </MapboxGL.ShapeSource>
         )}
@@ -532,6 +581,28 @@ export function MapDisplay({
           </MapboxGL.PointAnnotation>
         ))}
       </MapboxGL.MapView>
+
+      {/* ── route classification legend (bottom-right, idle only) ── */}
+      {!isRunning && routeClassification && (
+        <View style={[styles.routeLegend, { bottom: legendBottom }]}>
+          <View style={styles.routeLegendItem}>
+            <View style={[styles.routeLegendDot, { backgroundColor: '#FF6B6B' }]} />
+            <Text style={styles.routeLegendText}>New</Text>
+          </View>
+          <View style={styles.routeLegendItem}>
+            <View style={[styles.routeLegendDot, { backgroundColor: '#2E7D32' }]} />
+            <Text style={styles.routeLegendText}>Revisited</Text>
+          </View>
+          <View style={styles.routeLegendItem}>
+            <View style={[styles.routeLegendDot, { backgroundColor: '#A5D6A7' }]} />
+            <Text style={styles.routeLegendText}>Explored</Text>
+          </View>
+          <View style={styles.routeLegendItem}>
+            <View style={[styles.routeLegendDot, { backgroundColor: '#42A5F5' }]} />
+            <Text style={styles.routeLegendText}>Outside area</Text>
+          </View>
+        </View>
+      )}
 
       {/* ── follow button ── */}
       {isRunning && (
@@ -657,6 +728,19 @@ const styles = StyleSheet.create({
   },
   flagMarker: { alignItems: 'center', justifyContent: 'center' },
   flagMarkerText: { fontSize: 28 },
+  routeLegend: {
+    position: 'absolute',
+    bottom: 16,
+    right: 16,
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    gap: 5,
+  },
+  routeLegendItem: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  routeLegendDot: { width: 10, height: 10, borderRadius: 5 },
+  routeLegendText: { fontSize: 11, fontWeight: '600', color: '#1A1A1A' },
   wpBadge: {
     width: 24,
     height: 24,

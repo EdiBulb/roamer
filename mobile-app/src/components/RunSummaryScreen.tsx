@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Animated, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import MapboxGL from '@rnmapbox/maps';
@@ -9,6 +9,7 @@ import { findNewStreets, getTotalExploredCount, saveNewStreets } from '../servic
 import { getNewlyEarnedBadges } from '../services/badges';
 import { matchTraceToSegments } from '../services/overpassApi';
 import { setAreaConquered, updateAreaColoredSegments } from '../services/areaStorage';
+import { classifyRouteCoordinates } from '../services/routeClassifier';
 import { ShareCardModal } from './ShareCardModal';
 
 MapboxGL.setAccessToken(MAPBOX_TOKEN);
@@ -69,25 +70,32 @@ export function RunSummaryScreen({ coveredKm, elapsedSeconds, route, onHome, act
   const flagScale = useRef(new Animated.Value(0)).current;
   const flagOpacity = useRef(new Animated.Value(0)).current;
 
-  const routeGeoJSON: GeoJSON.Feature<GeoJSON.LineString> = {
-    type: 'Feature',
-    properties: {},
-    geometry: {
-      type: 'LineString',
-      coordinates: route.coordinates.map((c) => [c.longitude, c.latitude]),
-    },
-  };
-
   const bounds = getBoundingBox(route.coordinates);
 
-  const newStreetsSet = new Set(savedNewStreets);
-  const newSegments = route.steps
-    .filter(s => s.streetName && newStreetsSet.has(s.streetName) && s.coordinates.length > 0)
-    .map(s => s.coordinates.map(c => [c.longitude, c.latitude]));
-  const newStreetsGeoJSON: GeoJSON.Feature<GeoJSON.MultiLineString> | null =
-    newSegments.length > 0
-      ? { type: 'Feature', properties: {}, geometry: { type: 'MultiLineString', coordinates: newSegments } }
-      : null;
+  function toLineFeature(coords: import('../types').Coordinate[]): GeoJSON.Feature<GeoJSON.LineString> {
+    return {
+      type: 'Feature',
+      properties: {},
+      geometry: { type: 'LineString', coordinates: coords.map(c => [c.longitude, c.latitude]) },
+    };
+  }
+
+  const routeClassification = useMemo(() => {
+    if (!activeArea) return null;
+    const preRunExplored = activeArea.segments.filter(s => activeArea.coloredSegmentIds.includes(s.id));
+    return classifyRouteCoordinates(route.coordinates, preRunExplored, activeArea.center, activeArea.radiusKm);
+  }, []);
+
+  const overlapGeoJSON = routeClassification && routeClassification.overlapLines.length > 0
+    ? { type: 'FeatureCollection' as const, features: routeClassification.overlapLines.map(toLineFeature) }
+    : null;
+  const newTerritoryGeoJSON = routeClassification && routeClassification.newLines.length > 0
+    ? { type: 'FeatureCollection' as const, features: routeClassification.newLines.map(toLineFeature) }
+    : null;
+  const outsideGeoJSON = routeClassification && routeClassification.outsideLines.length > 0
+    ? { type: 'FeatureCollection' as const, features: routeClassification.outsideLines.map(toLineFeature) }
+    : null;
+  const plainRouteGeoJSON = !routeClassification ? toLineFeature(route.coordinates) : null;
 
   function triggerConquestAnimation() {
     flagScale.setValue(0);
@@ -227,21 +235,46 @@ export function RunSummaryScreen({ coveredKm, elapsedSeconds, route, onHome, act
             bounds={{ ...bounds, paddingTop: 40, paddingBottom: 40, paddingLeft: 24, paddingRight: 24 }}
             animationDuration={0}
           />
-          <MapboxGL.ShapeSource id="summary-route" shape={routeGeoJSON}>
-            <MapboxGL.LineLayer
-              id="summary-line"
-              style={{ lineColor: '#4CAF50', lineWidth: 4, lineJoin: 'round', lineCap: 'round' }}
-            />
-          </MapboxGL.ShapeSource>
-          {newStreetsGeoJSON && (
-            <MapboxGL.ShapeSource id="new-streets" shape={newStreetsGeoJSON}>
-              <MapboxGL.LineLayer
-                id="new-streets-line"
-                style={{ lineColor: '#F44336', lineWidth: 4, lineJoin: 'round', lineCap: 'round' }}
-              />
+          {plainRouteGeoJSON && (
+            <MapboxGL.ShapeSource id="summary-route" shape={plainRouteGeoJSON}>
+              <MapboxGL.LineLayer id="summary-line" style={{ lineColor: '#4CAF50', lineWidth: 4, lineJoin: 'round', lineCap: 'round' }} />
+            </MapboxGL.ShapeSource>
+          )}
+          {outsideGeoJSON && (
+            <MapboxGL.ShapeSource id="summary-outside" shape={outsideGeoJSON}>
+              <MapboxGL.LineLayer id="summary-outside-line" style={{ lineColor: '#42A5F5', lineWidth: 4, lineJoin: 'round', lineCap: 'round' }} />
+            </MapboxGL.ShapeSource>
+          )}
+          {overlapGeoJSON && (
+            <MapboxGL.ShapeSource id="summary-overlap" shape={overlapGeoJSON}>
+              <MapboxGL.LineLayer id="summary-overlap-line" style={{ lineColor: '#2E7D32', lineWidth: 4, lineJoin: 'round', lineCap: 'round' }} />
+            </MapboxGL.ShapeSource>
+          )}
+          {newTerritoryGeoJSON && (
+            <MapboxGL.ShapeSource id="summary-new" shape={newTerritoryGeoJSON}>
+              <MapboxGL.LineLayer id="summary-new-line" style={{ lineColor: '#FF6B6B', lineWidth: 4, lineJoin: 'round', lineCap: 'round' }} />
             </MapboxGL.ShapeSource>
           )}
         </MapboxGL.MapView>
+
+        {routeClassification && (
+          <View style={styles.legend}>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: '#FF6B6B' }]} />
+              <Text style={styles.legendText}>New</Text>
+            </View>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: '#2E7D32' }]} />
+              <Text style={styles.legendText}>Revisited</Text>
+            </View>
+            {routeClassification.outsideLines.length > 0 && (
+              <View style={styles.legendItem}>
+                <View style={[styles.legendDot, { backgroundColor: '#42A5F5' }]} />
+                <Text style={styles.legendText}>Outside area</Text>
+              </View>
+            )}
+          </View>
+        )}
       </View>
 
       {/* Save / Done button */}
@@ -374,6 +407,19 @@ const styles = StyleSheet.create({
   streetsBannerText: { fontSize: 15, fontWeight: '600', color: '#2E7D32' },
   mapContainer: { height: 240, marginTop: 12, marginHorizontal: 16, borderRadius: 16, overflow: 'hidden' },
   map: { flex: 1 },
+  legend: {
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    gap: 4,
+  },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  legendDot: { width: 10, height: 10, borderRadius: 5 },
+  legendText: { fontSize: 11, fontWeight: '600', color: '#1A1A1A' },
   saveButton: {
     backgroundColor: '#4CAF50',
     marginHorizontal: 24,
