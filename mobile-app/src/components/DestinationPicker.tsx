@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Keyboard,
+  Modal,
+  Pressable,
   StyleSheet,
   Text,
   TextInput,
@@ -30,10 +31,10 @@ export function DestinationPicker({ userLocation, onSelect, onSavePrompt }: Prop
   const [results, setResults] = useState<GeocodingFeature[]>([]);
   const [searching, setSearching] = useState(false);
   const [countryCode, setCountryCode] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { places, remove } = useSavedPlaces();
 
-  // Reverse geocode once to get user's country code for search restriction
   useEffect(() => {
     async function fetchCountry() {
       try {
@@ -80,15 +81,10 @@ export function DestinationPicker({ userLocation, onSelect, onSavePrompt }: Prop
     if (!alreadySaved) onSavePrompt?.(coord, label);
   }
 
-  function handleSavedPlacePress(coord: Coordinate, label: string) {
-    onSelect(coord, label);
-  }
-
-  function handleLongPressSaved(label: string) {
-    Alert.alert(label, 'Remove this saved place?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Remove', style: 'destructive', onPress: () => remove(label) },
-    ]);
+  function handleConfirmDelete() {
+    if (!deleteTarget) return;
+    remove(deleteTarget);
+    setDeleteTarget(null);
   }
 
   return (
@@ -132,16 +128,15 @@ export function DestinationPicker({ userLocation, onSelect, onSavePrompt }: Prop
         </View>
       )}
 
-
-{/* Saved places chips */}
+      {/* Saved places chips */}
       {places.length > 0 && results.length === 0 && (
         <View style={styles.chipsRow}>
           {places.map((p) => (
             <TouchableOpacity
               key={p.label}
               style={styles.chip}
-              onPress={() => handleSavedPlacePress(p.coord, p.label)}
-              onLongPress={() => handleLongPressSaved(p.label)}
+              onPress={() => { onSelect(p.coord, p.label); }}
+              onLongPress={() => setDeleteTarget(p.label)}
               activeOpacity={0.7}
             >
               <Text style={styles.chipText}>{p.label}</Text>
@@ -154,6 +149,24 @@ export function DestinationPicker({ userLocation, onSelect, onSavePrompt }: Prop
       {results.length === 0 && (
         <Text style={styles.hint}>— or tap the map —</Text>
       )}
+
+      {/* Delete confirmation popover */}
+      <Modal visible={!!deleteTarget} transparent animationType="fade" onRequestClose={() => setDeleteTarget(null)}>
+        <Pressable style={styles.overlay} onPress={() => setDeleteTarget(null)}>
+          <Pressable style={styles.popover} onPress={() => {}}>
+            <Text style={styles.popoverTitle}>Remove "{deleteTarget}"?</Text>
+            <Text style={styles.popoverSub}>This place will be removed from your saved list.</Text>
+            <View style={styles.popoverActions}>
+              <TouchableOpacity style={styles.cancelBtn} onPress={() => setDeleteTarget(null)} activeOpacity={0.7}>
+                <Text style={styles.cancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.removeBtn} onPress={handleConfirmDelete} activeOpacity={0.8}>
+                <Text style={styles.removeBtnText}>Remove</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -196,4 +209,37 @@ const styles = StyleSheet.create({
   },
   chipText: { fontSize: 13, fontWeight: '600', color: '#1A1A1A' },
   hint: { fontSize: 13, color: '#BDBDBD', textAlign: 'center', marginTop: 4 },
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  popover: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 24,
+    width: '100%',
+    gap: 8,
+  },
+  popoverTitle: { fontSize: 16, fontWeight: '700', color: '#1A1A1A' },
+  popoverSub: { fontSize: 13, color: '#888' },
+  popoverActions: { flexDirection: 'row', gap: 10, marginTop: 8 },
+  cancelBtn: {
+    flex: 1,
+    backgroundColor: '#F0F0F0',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  cancelBtnText: { fontSize: 14, fontWeight: '600', color: '#1A1A1A' },
+  removeBtn: {
+    flex: 1,
+    backgroundColor: '#FF5252',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  removeBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
 });
