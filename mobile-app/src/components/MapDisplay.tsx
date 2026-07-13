@@ -578,13 +578,6 @@ export function MapDisplay({
         </View>
       )}
 
-      {destinationPickerActive && (
-        <View style={styles.tapHint} pointerEvents="none">
-          <View style={styles.tapHintBadge}>
-            <Text style={styles.tapHintText}>📍  Tap the map to set destination</Text>
-          </View>
-        </View>
-      )}
     </View>
   );
 }
@@ -639,20 +632,6 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: '#fff',
   },
-  tapHint: {
-    position: 'absolute',
-    top: 16,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-  },
-  tapHintBadge: {
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  tapHintText: { color: '#fff', fontSize: 13, fontWeight: '600' },
   northButton: {
     width: 50,
     height: 50,

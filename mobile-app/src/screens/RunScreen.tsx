@@ -1,4 +1,4 @@
-import { Animated, KeyboardAvoidingView, Modal, Platform, PanResponder, ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, KeyboardAvoidingView, Modal, Platform, PanResponder, ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
@@ -25,6 +25,7 @@ import { CreateAreaModal } from '../components/CreateAreaModal';
 import { MyAreasSheet } from '../components/MyAreasSheet';
 import { FollowMode } from '../components/MapDisplay';
 import { loadAreas } from '../services/areaStorage';
+import { useSavedPlaces } from '../hooks/useSavedPlaces';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback } from 'react';
 
@@ -138,6 +139,17 @@ export function RunScreen() {
   const [selectedDistance, setSelectedDistance] = useState<TargetDistance>(5);
   const [routeMode, setRouteMode] = useState<RouteMode>('loop');
   const [destination, setDestination] = useState<Coordinate | null>(null);
+  const [pendingSave, setPendingSave] = useState<{ coord: Coordinate; label: string } | null>(null);
+  const [saveLabel, setSaveLabel] = useState('');
+  const { add: addSavedPlace } = useSavedPlaces();
+
+  async function confirmSave() {
+    if (!pendingSave || !saveLabel.trim()) return;
+    await addSavedPlace(saveLabel.trim(), pendingSave.coord);
+    setPendingSave(null);
+    setSaveLabel('');
+  }
+
   const [difficulty, setDifficulty] = useState<Difficulty>('normal');
   const { route, status, generate, generateTight, clearRoute } = useRoute(location, selectedDistance, routeMode, destination, difficulty, activeArea);
   const [showDistanceModal, setShowDistanceModal] = useState(false);
@@ -792,6 +804,7 @@ export function RunScreen() {
             <DestinationPicker
               userLocation={location}
               onSelect={(coord) => setDestination(coord)}
+              onSavePrompt={(coord, label) => { setPendingSave({ coord, label }); setSaveLabel((label.split(',')[0] ?? label).slice(0, 20)); }}
             />
           )}
           </>
@@ -804,9 +817,32 @@ export function RunScreen() {
           {routeMode === 'loop' ? (
             <DistancePicker selected={selectedDistance} onSelect={(d) => { setSelectedDistance(d); if (isActive) advance(1); }} />
           ) : (
-            destination && (
+            destination && (<>
               <DifficultyPicker selected={difficulty} onSelect={setDifficulty} />
-            )
+              {pendingSave && (
+                <View style={styles.saveBanner}>
+                  <Text style={styles.saveBannerTitle}>🔖 Save this place?</Text>
+                  <View style={styles.saveBannerRow}>
+                    <TextInput
+                      style={styles.saveBannerInput}
+                      value={saveLabel}
+                      onChangeText={setSaveLabel}
+                      placeholder="Label (e.g. Home)"
+                      placeholderTextColor="#BDBDBD"
+                      maxLength={20}
+                      returnKeyType="done"
+                      onSubmitEditing={confirmSave}
+                    />
+                    <TouchableOpacity style={styles.saveBannerConfirm} onPress={confirmSave} activeOpacity={0.8}>
+                      <Text style={styles.saveBannerConfirmText}>Save</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.saveBannerCancel} onPress={() => setPendingSave(null)}>
+                      <Text style={styles.saveBannerCancelText}>✕</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+            </>)
           )}
 
           <RouteInfo
@@ -814,6 +850,8 @@ export function RunScreen() {
             distanceKm={route?.distanceKm ?? null}
             targetKm={selectedDistance}
             units={settings.units}
+            mode={routeMode}
+            difficulty={difficulty}
           />
 
           {selectedDistance === 'free' ? (
@@ -1096,5 +1134,34 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   distanceModalSecondaryText: { color: '#888', fontSize: 13, fontWeight: '600' },
+  saveBanner: {
+    alignSelf: 'stretch',
+    backgroundColor: '#F0F8F0',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#C8E6C9',
+    padding: 12,
+    gap: 8,
+  },
+  saveBannerTitle: { fontSize: 13, fontWeight: '700', color: '#388E3C' },
+  saveBannerRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  saveBannerInput: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    fontSize: 14,
+    color: '#1A1A1A',
+  },
+  saveBannerConfirm: {
+    backgroundColor: '#4CAF50',
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+  },
+  saveBannerConfirmText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  saveBannerCancel: { paddingHorizontal: 6, paddingVertical: 8 },
+  saveBannerCancelText: { fontSize: 15, color: '#BDBDBD' },
 });
 

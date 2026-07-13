@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
   Keyboard,
   StyleSheet,
   Text,
@@ -23,17 +22,16 @@ interface GeocodingFeature {
 interface Props {
   userLocation: Coordinate;
   onSelect: (coord: Coordinate, label: string) => void;
+  onSavePrompt?: (coord: Coordinate, label: string) => void;
 }
 
-export function DestinationPicker({ userLocation, onSelect }: Props) {
+export function DestinationPicker({ userLocation, onSelect, onSavePrompt }: Props) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<GeocodingFeature[]>([]);
   const [searching, setSearching] = useState(false);
-  const [savingFor, setSavingFor] = useState<{ coord: Coordinate; label: string } | null>(null);
-  const [saveInput, setSaveInput] = useState('');
   const [countryCode, setCountryCode] = useState<string | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const { places, add, remove } = useSavedPlaces();
+  const { places, remove } = useSavedPlaces();
 
   // Reverse geocode once to get user's country code for search restriction
   useEffect(() => {
@@ -78,6 +76,8 @@ export function DestinationPicker({ userLocation, onSelect }: Props) {
     setQuery('');
     setResults([]);
     onSelect(coord, label);
+    const alreadySaved = places.some(p => p.coord.latitude === coord.latitude && p.coord.longitude === coord.longitude);
+    if (!alreadySaved) onSavePrompt?.(coord, label);
   }
 
   function handleSavedPlacePress(coord: Coordinate, label: string) {
@@ -89,18 +89,6 @@ export function DestinationPicker({ userLocation, onSelect }: Props) {
       { text: 'Cancel', style: 'cancel' },
       { text: 'Remove', style: 'destructive', onPress: () => remove(label) },
     ]);
-  }
-
-  function promptSave(coord: Coordinate, label: string) {
-    setSavingFor({ coord, label });
-    setSaveInput(label.length <= 12 ? label : '');
-  }
-
-  async function confirmSave() {
-    if (!savingFor || !saveInput.trim()) return;
-    await add(saveInput.trim(), savingFor.coord);
-    setSavingFor(null);
-    setSaveInput('');
   }
 
   return (
@@ -131,51 +119,21 @@ export function DestinationPicker({ userLocation, onSelect }: Props) {
           {results.map((item) => {
             const coord: Coordinate = { latitude: item.center[1], longitude: item.center[0] };
             return (
-              <View key={item.id} style={styles.resultRow}>
-                <TouchableOpacity
-                  style={styles.resultMain}
-                  onPress={() => handleSelect(coord, item.place_name)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.resultText} numberOfLines={1}>{item.place_name}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.saveBtn}
-                  onPress={() => promptSave(coord, item.place_name)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.saveBtnText}>＋</Text>
-                </TouchableOpacity>
-              </View>
+              <TouchableOpacity
+                key={item.id}
+                style={styles.resultRow}
+                onPress={() => handleSelect(coord, item.place_name)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.resultText} numberOfLines={1}>{item.place_name}</Text>
+              </TouchableOpacity>
             );
           })}
         </View>
       )}
 
-      {/* Save label input */}
-      {savingFor && (
-        <View style={styles.saveLabelRow}>
-          <TextInput
-            style={styles.saveLabelInput}
-            value={saveInput}
-            onChangeText={setSaveInput}
-            placeholder="Label (e.g. Home)"
-            placeholderTextColor="#BDBDBD"
-            autoFocus
-            maxLength={20}
-            returnKeyType="done"
-            onSubmitEditing={confirmSave}
-          />
-          <TouchableOpacity style={styles.saveLabelConfirm} onPress={confirmSave} activeOpacity={0.8}>
-            <Text style={styles.saveLabelConfirmText}>Save</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.saveLabelCancel} onPress={() => setSavingFor(null)}>
-            <Text style={styles.saveLabelCancelText}>✕</Text>
-          </TouchableOpacity>
-        </View>
-      )}
 
-      {/* Saved places chips */}
+{/* Saved places chips */}
       {places.length > 0 && results.length === 0 && (
         <View style={styles.chipsRow}>
           {places.map((p) => (
@@ -223,38 +181,12 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   resultRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
     borderBottomWidth: 1,
     borderBottomColor: '#F5F5F5',
   },
-  resultMain: { flex: 1, paddingVertical: 12, paddingHorizontal: 14 },
   resultText: { fontSize: 14, color: '#1A1A1A' },
-  saveBtn: { paddingHorizontal: 14, paddingVertical: 12 },
-  saveBtnText: { fontSize: 18, color: '#4CAF50', fontWeight: '700' },
-  saveLabelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  saveLabelInput: {
-    flex: 1,
-    backgroundColor: '#F5F5F5',
-    borderRadius: 10,
-    paddingVertical: 9,
-    paddingHorizontal: 12,
-    fontSize: 14,
-    color: '#1A1A1A',
-  },
-  saveLabelConfirm: {
-    backgroundColor: '#4CAF50',
-    borderRadius: 10,
-    paddingVertical: 9,
-    paddingHorizontal: 14,
-  },
-  saveLabelConfirmText: { color: '#fff', fontWeight: '700', fontSize: 14 },
-  saveLabelCancel: { paddingHorizontal: 4 },
-  saveLabelCancelText: { fontSize: 16, color: '#BDBDBD' },
   chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
     backgroundColor: '#F0F0F0',

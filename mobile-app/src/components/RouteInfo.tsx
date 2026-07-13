@@ -1,15 +1,17 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { Units } from '../hooks/useSettings';
-import { RouteStatus, TargetDistance } from '../types';
+import { Difficulty, RouteMode, RouteStatus, TargetDistance } from '../types';
 
 interface Props {
   status: RouteStatus;
   distanceKm: number | null;
   targetKm: TargetDistance;
   units: Units;
+  mode?: RouteMode;
+  difficulty?: Difficulty;
 }
 
-export function RouteInfo({ status, distanceKm, targetKm, units }: Props) {
+export function RouteInfo({ status, distanceKm, targetKm, units, mode, difficulty }: Props) {
   const unitLabel = units === 'miles' ? 'mi' : 'km';
   const targetDisplay = targetKm === 'free'
     ? 'free'
@@ -18,8 +20,11 @@ export function RouteInfo({ status, distanceKm, targetKm, units }: Props) {
       : String(targetKm);
 
   if (status === 'idle') {
+    const idleText = mode === 'destination' && difficulty
+      ? `Tap the button to generate a ${difficulty} route to your destination`
+      : `Tap the button to generate a ${targetDisplay}${unitLabel} route`;
     return (
-      <Text style={styles.hint}>Tap the button to generate a {targetDisplay}{unitLabel} route</Text>
+      <Text style={styles.hint}>{idleText}</Text>
     );
   }
 
