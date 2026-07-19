@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from 'react';
 import { Animated, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import MapboxGL from '@rnmapbox/maps';
-import { MAPBOX_TOKEN } from '../constants';
+import { MAPBOX_TOKEN, COLOR_NEW, COLOR_OVERLAP, COLOR_OUTSIDE } from '../constants';
 import { Area, Badge, Coordinate, RunRecord, RunRoute } from '../types';
 import { saveRunRecord } from '../services/storage';
 import { findNewStreets, getTotalExploredCount, saveNewStreets } from '../services/streetTracker';
@@ -242,17 +242,17 @@ export function RunSummaryScreen({ coveredKm, elapsedSeconds, route, onHome, act
           )}
           {outsideGeoJSON && (
             <MapboxGL.ShapeSource id="summary-outside" shape={outsideGeoJSON}>
-              <MapboxGL.LineLayer id="summary-outside-line" style={{ lineColor: '#42A5F5', lineWidth: 4, lineJoin: 'round', lineCap: 'round' }} />
+              <MapboxGL.LineLayer id="summary-outside-line" style={{ lineColor: COLOR_OUTSIDE, lineWidth: 4, lineJoin: 'round', lineCap: 'round' }} />
             </MapboxGL.ShapeSource>
           )}
           {overlapGeoJSON && (
             <MapboxGL.ShapeSource id="summary-overlap" shape={overlapGeoJSON}>
-              <MapboxGL.LineLayer id="summary-overlap-line" style={{ lineColor: '#2E7D32', lineWidth: 4, lineJoin: 'round', lineCap: 'round' }} />
+              <MapboxGL.LineLayer id="summary-overlap-line" style={{ lineColor: COLOR_OVERLAP, lineWidth: 4, lineJoin: 'round', lineCap: 'round' }} />
             </MapboxGL.ShapeSource>
           )}
           {newTerritoryGeoJSON && (
             <MapboxGL.ShapeSource id="summary-new" shape={newTerritoryGeoJSON}>
-              <MapboxGL.LineLayer id="summary-new-line" style={{ lineColor: '#FF6B6B', lineWidth: 4, lineJoin: 'round', lineCap: 'round' }} />
+              <MapboxGL.LineLayer id="summary-new-line" style={{ lineColor: COLOR_NEW, lineWidth: 4, lineJoin: 'round', lineCap: 'round' }} />
             </MapboxGL.ShapeSource>
           )}
         </MapboxGL.MapView>
@@ -260,16 +260,16 @@ export function RunSummaryScreen({ coveredKm, elapsedSeconds, route, onHome, act
         {routeClassification && (
           <View style={styles.legend}>
             <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: '#FF6B6B' }]} />
+              <View style={[styles.legendDot, { backgroundColor: COLOR_NEW }]} />
               <Text style={styles.legendText}>New</Text>
             </View>
             <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: '#2E7D32' }]} />
+              <View style={[styles.legendDot, { backgroundColor: COLOR_OVERLAP }]} />
               <Text style={styles.legendText}>Revisited</Text>
             </View>
             {routeClassification.outsideLines.length > 0 && (
               <View style={styles.legendItem}>
-                <View style={[styles.legendDot, { backgroundColor: '#42A5F5' }]} />
+                <View style={[styles.legendDot, { backgroundColor: COLOR_OUTSIDE }]} />
                 <Text style={styles.legendText}>Outside area</Text>
               </View>
             )}
@@ -404,7 +404,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     alignItems: 'center',
   },
-  streetsBannerText: { fontSize: 15, fontWeight: '600', color: '#2E7D32' },
+  streetsBannerText: { fontSize: 15, fontWeight: '600', color: COLOR_OVERLAP },
   mapContainer: { height: 240, marginTop: 12, marginHorizontal: 16, borderRadius: 16, overflow: 'hidden' },
   map: { flex: 1 },
   legend: {

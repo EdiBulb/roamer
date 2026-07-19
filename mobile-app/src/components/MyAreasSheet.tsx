@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Area } from '../types';
 import { deleteArea, renameArea } from '../services/areaStorage';
+import { COLOR_NEW } from '../constants';
 
 interface Props {
   visible: boolean;
@@ -228,11 +229,11 @@ const styles = StyleSheet.create({
   areaCardActive: {
     backgroundColor: '#FFF3E0',
     borderWidth: 1.5,
-    borderColor: '#FF6B6B',
+    borderColor: COLOR_NEW,
   },
   areaCardLeft: { flex: 1, gap: 4 },
   areaName: { fontSize: 16, fontWeight: '700', color: '#1A1A1A' },
-  areaNameActive: { color: '#FF6B6B' },
+  areaNameActive: { color: COLOR_NEW },
   areaMeta: { fontSize: 12, color: '#BDBDBD' },
   levelChip: {
     alignSelf: 'flex-start',
@@ -245,12 +246,12 @@ const styles = StyleSheet.create({
   levelChipText: { fontSize: 12, fontWeight: '700' },
   areaCardRight: { alignItems: 'center', gap: 4, marginLeft: 12 },
   areaPct: { fontSize: 18, fontWeight: '800', color: '#BDBDBD' },
-  areaPctActive: { color: '#FF6B6B' },
+  areaPctActive: { color: COLOR_NEW },
   activeDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#FF6B6B',
+    backgroundColor: COLOR_NEW,
   },
   createBtn: {
     marginTop: 12,
@@ -320,7 +321,7 @@ const styles = StyleSheet.create({
   renameTitle: { fontSize: 18, fontWeight: '800', color: '#1A1A1A' },
   renameInput: {
     borderWidth: 1.5,
-    borderColor: '#FF6B6B',
+    borderColor: COLOR_NEW,
     borderRadius: 12,
     paddingVertical: 12,
     paddingHorizontal: 16,
@@ -340,7 +341,7 @@ const styles = StyleSheet.create({
     flex: 2,
     paddingVertical: 13,
     borderRadius: 12,
-    backgroundColor: '#FF6B6B',
+    backgroundColor: COLOR_NEW,
     alignItems: 'center',
   },
   renameSaveBtnDisabled: { backgroundColor: '#FFCDD2' },

@@ -7,7 +7,7 @@ import MapboxGL from '@rnmapbox/maps';
 import { Coordinate, Area, RoadSegment } from '../types';
 import { fetchSegmentsInPolygon } from '../services/overpassApi';
 import { saveArea } from '../services/areaStorage';
-import { MAPBOX_TOKEN } from '../constants';
+import { MAPBOX_TOKEN, COLOR_NEW, COLOR_EXPLORED } from '../constants';
 
 MapboxGL.setAccessToken(MAPBOX_TOKEN);
 
@@ -306,7 +306,7 @@ const styles = StyleSheet.create({
     width: 16,
     height: 16,
     borderRadius: 8,
-    backgroundColor: '#FF6B6B',
+    backgroundColor: COLOR_NEW,
     borderWidth: 2,
     borderColor: '#fff',
   },
@@ -352,6 +352,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#4CAF50',
     alignItems: 'center',
   },
-  createBtnDisabled: { backgroundColor: '#A5D6A7' },
+  createBtnDisabled: { backgroundColor: COLOR_EXPLORED },
   createText: { fontSize: 15, fontWeight: '700', color: '#fff' },
 });

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, View } from 'react-native';
+import { COLOR_NEW } from '../constants';
 
 interface Props {
   heading: number;   // degrees, 0 = north, clockwise
@@ -148,7 +149,7 @@ const styles = StyleSheet.create({
     width: 9,
     height: 5,
     borderRadius: 2,
-    backgroundColor: '#FF6B6B',
+    backgroundColor: COLOR_NEW,
     top: BODY_TOP - 12, // 1 — coral paint tip at front
     left: SIZE / 2 - 4, // 23 — centered
   },

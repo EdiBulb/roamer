@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { Image, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { MAPBOX_TOKEN } from '../constants';
+import { MAPBOX_TOKEN, COLOR_OVERLAP } from '../constants';
 import { Coordinate, RunRecord } from '../types';
 import { updateRunMemo } from '../services/storage';
 
@@ -290,7 +290,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     alignItems: 'center',
   },
-  streetsBadgeText: { fontSize: 14, fontWeight: '600', color: '#2E7D32' },
+  streetsBadgeText: { fontSize: 14, fontWeight: '600', color: COLOR_OVERLAP },
   memoCard: {
     backgroundColor: '#fff',
     marginHorizontal: 16,

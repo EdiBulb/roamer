@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Magnetometer } from 'expo-sensors';
-import { MAPBOX_TOKEN, DEFAULT_ZOOM } from '../constants';
+import { MAPBOX_TOKEN, DEFAULT_ZOOM, COLOR_NEW, COLOR_OVERLAP, COLOR_OUTSIDE, COLOR_EXPLORED } from '../constants';
 import { getBoundingBox } from '../services/mapboxApi';
 import { Area, Coordinate, RunRoute } from '../types';
 import { ExplorerPainterMarker } from './ExplorerPainterMarker';
@@ -413,11 +413,11 @@ export function MapDisplay({
           <MapboxGL.ShapeSource id="area-circles-other" shape={otherCirclesGeoJSON}>
             <MapboxGL.FillLayer
               id="area-circles-other-fill"
-              style={{ fillColor: '#FF6B6B', fillOpacity: 0.04 }}
+              style={{ fillColor: COLOR_NEW, fillOpacity: 0.04 }}
             />
             <MapboxGL.LineLayer
               id="area-circles-other-border"
-              style={{ lineColor: '#FF6B6B', lineWidth: 1.5, lineOpacity: 0.4, lineDasharray: [4, 3] }}
+              style={{ lineColor: COLOR_NEW, lineWidth: 1.5, lineOpacity: 0.4, lineDasharray: [4, 3] }}
             />
           </MapboxGL.ShapeSource>
         )}
@@ -427,11 +427,11 @@ export function MapDisplay({
           <MapboxGL.ShapeSource id="area-circle-active" shape={activeCircleGeoJSON}>
             <MapboxGL.FillLayer
               id="area-circle-active-fill"
-              style={{ fillColor: '#FF6B6B', fillOpacity: 0.08 }}
+              style={{ fillColor: COLOR_NEW, fillOpacity: 0.08 }}
             />
             <MapboxGL.LineLayer
               id="area-circle-active-border"
-              style={{ lineColor: '#FF6B6B', lineWidth: 2.5, lineOpacity: 0.9, lineDasharray: [4, 3] }}
+              style={{ lineColor: COLOR_NEW, lineWidth: 2.5, lineOpacity: 0.9, lineDasharray: [4, 3] }}
             />
           </MapboxGL.ShapeSource>
         )}
@@ -448,13 +448,13 @@ export function MapDisplay({
             <MapboxGL.ShapeSource id="area-existing" shape={areaSegmentGeoJSON.existing}>
               <MapboxGL.LineLayer
                 id="area-existing-line"
-                style={{ lineColor: routeClassification ? '#A5D6A7' : '#4CAF50', lineWidth: 4, lineJoin: 'round', lineCap: 'round', lineOpacity: 0.9 }}
+                style={{ lineColor: routeClassification ? COLOR_EXPLORED : '#4CAF50', lineWidth: 4, lineJoin: 'round', lineCap: 'round', lineOpacity: 0.9 }}
               />
             </MapboxGL.ShapeSource>
             <MapboxGL.ShapeSource id="area-fresh" shape={areaSegmentGeoJSON.fresh}>
               <MapboxGL.LineLayer
                 id="area-fresh-line"
-                style={{ lineColor: '#FF6B6B', lineWidth: 4, lineJoin: 'round', lineCap: 'round', lineOpacity: 1 }}
+                style={{ lineColor: COLOR_NEW, lineWidth: 4, lineJoin: 'round', lineCap: 'round', lineOpacity: 1 }}
               />
             </MapboxGL.ShapeSource>
           </>
@@ -485,7 +485,7 @@ export function MapDisplay({
           <MapboxGL.ShapeSource id="route-overlap" shape={classifiedOverlapGeoJSON}>
             <MapboxGL.LineLayer
               id="route-overlap-line"
-              style={{ lineColor: '#2E7D32', lineWidth: 5, lineJoin: 'round', lineCap: 'round', lineOpacity: 0.95 }}
+              style={{ lineColor: COLOR_OVERLAP, lineWidth: 5, lineJoin: 'round', lineCap: 'round', lineOpacity: 0.95 }}
             />
           </MapboxGL.ShapeSource>
         )}
@@ -495,7 +495,7 @@ export function MapDisplay({
           <MapboxGL.ShapeSource id="route-new" shape={classifiedNewGeoJSON}>
             <MapboxGL.LineLayer
               id="route-new-line"
-              style={{ lineColor: '#FF6B6B', lineWidth: 5, lineJoin: 'round', lineCap: 'round', lineOpacity: 0.95 }}
+              style={{ lineColor: COLOR_NEW, lineWidth: 5, lineJoin: 'round', lineCap: 'round', lineOpacity: 0.95 }}
             />
           </MapboxGL.ShapeSource>
         )}
@@ -505,7 +505,7 @@ export function MapDisplay({
           <MapboxGL.ShapeSource id="route-outside" shape={classifiedOutsideGeoJSON}>
             <MapboxGL.LineLayer
               id="route-outside-line"
-              style={{ lineColor: '#42A5F5', lineWidth: 5, lineJoin: 'round', lineCap: 'round', lineOpacity: 0.95 }}
+              style={{ lineColor: COLOR_OUTSIDE, lineWidth: 5, lineJoin: 'round', lineCap: 'round', lineOpacity: 0.95 }}
             />
           </MapboxGL.ShapeSource>
         )}
@@ -523,7 +523,7 @@ export function MapDisplay({
             <MapboxGL.ShapeSource id="seg-next" shape={toLineGeoJSON(segments.next)}>
               <MapboxGL.LineLayer
                 id="seg-next-line"
-                style={{ lineColor: '#A5D6A7', lineWidth: 4, lineJoin: 'round', lineCap: 'round', lineOpacity: isMyWayMode ? 0.25 : 1 }}
+                style={{ lineColor: COLOR_EXPLORED, lineWidth: 4, lineJoin: 'round', lineCap: 'round', lineOpacity: isMyWayMode ? 0.25 : 1 }}
               />
             </MapboxGL.ShapeSource>
             <MapboxGL.ShapeSource id="seg-completed" shape={toLineGeoJSON(segments.completed)}>
@@ -610,19 +610,19 @@ export function MapDisplay({
       {!isRunning && routeClassification && (
         <View style={[styles.routeLegend, { bottom: legendBottom }]}>
           <View style={styles.routeLegendItem}>
-            <View style={[styles.routeLegendDot, { backgroundColor: '#FF6B6B' }]} />
+            <View style={[styles.routeLegendDot, { backgroundColor: COLOR_NEW }]} />
             <Text style={styles.routeLegendText}>New</Text>
           </View>
           <View style={styles.routeLegendItem}>
-            <View style={[styles.routeLegendDot, { backgroundColor: '#2E7D32' }]} />
+            <View style={[styles.routeLegendDot, { backgroundColor: COLOR_OVERLAP }]} />
             <Text style={styles.routeLegendText}>Revisited</Text>
           </View>
           <View style={styles.routeLegendItem}>
-            <View style={[styles.routeLegendDot, { backgroundColor: '#A5D6A7' }]} />
+            <View style={[styles.routeLegendDot, { backgroundColor: COLOR_EXPLORED }]} />
             <Text style={styles.routeLegendText}>Explored</Text>
           </View>
           <View style={styles.routeLegendItem}>
-            <View style={[styles.routeLegendDot, { backgroundColor: '#42A5F5' }]} />
+            <View style={[styles.routeLegendDot, { backgroundColor: COLOR_OUTSIDE }]} />
             <Text style={styles.routeLegendText}>Outside area</Text>
           </View>
         </View>

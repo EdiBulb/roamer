@@ -1,5 +1,5 @@
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { DISTANCE_OPTIONS } from '../constants';
+import { DISTANCE_OPTIONS, COLOR_NEW } from '../constants';
 import { TargetDistance } from '../types';
 
 interface Props {
@@ -72,13 +72,13 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   freeButton: {
-    borderColor: '#FF6B6B',
+    borderColor: COLOR_NEW,
   },
   freeButtonSelected: {
-    backgroundColor: '#FF6B6B',
+    backgroundColor: COLOR_NEW,
   },
   freeButtonText: {
-    color: '#FF6B6B',
+    color: COLOR_NEW,
   },
   freeButtonTextSelected: {
     color: '#fff',

@@ -10,7 +10,7 @@ function isNativeAvailable(): boolean {
     NativeModules.RNMediaLibrary
   );
 }
-import { MAPBOX_TOKEN } from '../constants';
+import { MAPBOX_TOKEN, COLOR_NEW } from '../constants';
 import { Area, Badge, Coordinate } from '../types';
 
 interface Props {
@@ -51,7 +51,7 @@ function buildMapUrl(area: Area, todayIdSet: Set<string>, token: string): string
     })),
     ...todaySegs.map(s => ({
       type: 'Feature' as const,
-      properties: { stroke: '#FF6B6B', 'stroke-width': 4 },
+      properties: { stroke: COLOR_NEW, 'stroke-width': 4 },
       geometry: { type: 'LineString' as const, coordinates: sampleCoords(s.coordinates) },
     })),
   ];
@@ -176,7 +176,7 @@ export function ShareCardModal({ visible, onClose, area, todayColoredIds, covere
                   <Text style={styles.legendText}>EXPLORED</Text>
                 </View>
                 <View style={styles.legendItem}>
-                  <View style={[styles.legendLine, { backgroundColor: '#FF6B6B' }]} />
+                  <View style={[styles.legendLine, { backgroundColor: COLOR_NEW }]} />
                   <Text style={styles.legendText}>TODAY</Text>
                 </View>
               </View>
@@ -194,7 +194,7 @@ export function ShareCardModal({ visible, onClose, area, todayColoredIds, covere
                 </View>
                 <View style={styles.progressBar}>
                   <View style={{ width: `${existingPct}%`, height: 3, backgroundColor: '#4CAF50' }} />
-                  {todayPct > 0 && <View style={{ width: `${todayPct}%`, height: 3, backgroundColor: '#FF6B6B' }} />}
+                  {todayPct > 0 && <View style={{ width: `${todayPct}%`, height: 3, backgroundColor: COLOR_NEW }} />}
                 </View>
                 <Text style={styles.dateText}>{coveredKm.toFixed(1)} km today · {dateStr}</Text>
               </View>
@@ -272,7 +272,7 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: 'rgba(255,107,107,0.42)', borderRadius: 999,
     paddingVertical: 4, paddingHorizontal: 9,
   },
-  badgePillText: { fontSize: 9.5, fontWeight: '600', color: '#FF6B6B' },
+  badgePillText: { fontSize: 9.5, fontWeight: '600', color: COLOR_NEW },
   earnedLabel: { fontSize: 8, color: 'rgba(255,255,255,0.34)', letterSpacing: 0.5 },
   logoText: { fontSize: 10, fontWeight: '800', letterSpacing: 3.5, color: '#fff' },
   actions: { paddingHorizontal: 20, paddingBottom: 16, gap: 10 },
