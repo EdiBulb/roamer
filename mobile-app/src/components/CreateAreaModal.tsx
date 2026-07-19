@@ -1,6 +1,6 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
-  ActivityIndicator, Modal, StyleSheet,
+  Animated, ActivityIndicator, Modal, StyleSheet,
   Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import MapboxGL from '@rnmapbox/maps';
@@ -44,6 +44,65 @@ export function CreateAreaModal({ visible, location, onClose, onCreated }: Props
   const [name, setName] = useState('');
   const [fetchStatus, setFetchStatus] = useState<'idle' | 'loading' | 'error'>('idle');
   const cameraRef = useRef<MapboxGL.Camera>(null);
+
+  // Radar ring animated values (0 = ring start, 1 = ring end)
+  const ring1Anim = useRef(new Animated.Value(0)).current;
+  const ring2Anim = useRef(new Animated.Value(0)).current;
+  const ring3Anim = useRef(new Animated.Value(0)).current;
+  // Bouncing dot values
+  const dot1Y = useRef(new Animated.Value(0)).current;
+  const dot2Y = useRef(new Animated.Value(0)).current;
+  const dot3Y = useRef(new Animated.Value(0)).current;
+  const dot1Op = useRef(new Animated.Value(0.35)).current;
+  const dot2Op = useRef(new Animated.Value(0.35)).current;
+  const dot3Op = useRef(new Animated.Value(0.35)).current;
+
+  useEffect(() => {
+    if (fetchStatus !== 'loading') {
+      ring1Anim.setValue(0); ring2Anim.setValue(0); ring3Anim.setValue(0);
+      dot1Y.setValue(0); dot2Y.setValue(0); dot3Y.setValue(0);
+      dot1Op.setValue(0.35); dot2Op.setValue(0.35); dot3Op.setValue(0.35);
+      return;
+    }
+
+    function makeRing(anim: Animated.Value, delay: number) {
+      return Animated.sequence([
+        Animated.delay(delay),
+        Animated.loop(Animated.sequence([
+          Animated.timing(anim, { toValue: 1, duration: 2200, useNativeDriver: true }),
+          Animated.timing(anim, { toValue: 0, duration: 0, useNativeDriver: true }),
+        ])),
+      ]);
+    }
+
+    function makeDot(y: Animated.Value, op: Animated.Value, delay: number) {
+      return Animated.sequence([
+        Animated.delay(delay),
+        Animated.loop(Animated.sequence([
+          Animated.parallel([
+            Animated.timing(y, { toValue: -6, duration: 420, useNativeDriver: true }),
+            Animated.timing(op, { toValue: 1, duration: 420, useNativeDriver: true }),
+          ]),
+          Animated.parallel([
+            Animated.timing(y, { toValue: 0, duration: 420, useNativeDriver: true }),
+            Animated.timing(op, { toValue: 0.35, duration: 420, useNativeDriver: true }),
+          ]),
+          Animated.delay(360),
+        ])),
+      ]);
+    }
+
+    const all = Animated.parallel([
+      makeRing(ring1Anim, 0),
+      makeRing(ring2Anim, 733),
+      makeRing(ring3Anim, 1466),
+      makeDot(dot1Y, dot1Op, 0),
+      makeDot(dot2Y, dot2Op, 150),
+      makeDot(dot3Y, dot3Op, 300),
+    ]);
+    all.start();
+    return () => all.stop();
+  }, [fetchStatus]);
 
   function reset() {
     setStep('draw');
@@ -119,8 +178,14 @@ export function CreateAreaModal({ visible, location, onClose, onCreated }: Props
     },
   } : null;
 
+  const ringScale = (anim: Animated.Value) =>
+    anim.interpolate({ inputRange: [0, 1], outputRange: [0.35, 1.75] });
+  const ringOpacity = (anim: Animated.Value) =>
+    anim.interpolate({ inputRange: [0, 1], outputRange: [0.75, 0] });
+
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={handleClose}>
+      <View style={{ flex: 1 }}>
       {step === 'draw' ? (
         <View style={styles.container}>
           {/* Map */}
@@ -242,6 +307,61 @@ export function CreateAreaModal({ visible, location, onClose, onCreated }: Props
           </View>
         </View>
       )}
+
+      {/* ── Loading overlay (radar scan) ── */}
+      {fetchStatus === 'loading' && (
+        <View style={styles.loadingOverlay}>
+          {/* Radar rings */}
+          <View style={styles.radarContainer}>
+            {([
+              { anim: ring1Anim, color: '#4CAF50' },
+              { anim: ring2Anim, color: '#4CAF50' },
+              { anim: ring3Anim, color: '#A5D6A7' },
+            ] as const).map(({ anim, color }, i) => (
+              <Animated.View
+                key={i}
+                style={[
+                  styles.radarRing,
+                  {
+                    borderColor: color,
+                    transform: [{ scale: ringScale(anim) }],
+                    opacity: ringOpacity(anim),
+                  },
+                ]}
+              />
+            ))}
+            {/* Center GPS dot */}
+            <View style={styles.radarCenter}>
+              <View style={styles.radarCenterInner} />
+            </View>
+          </View>
+
+          {/* Area name pill */}
+          <View style={styles.areaNamePill}>
+            <Text style={styles.areaNamePillText}>{name}</Text>
+          </View>
+
+          <Text style={styles.loadingTitle}>거리를 불러오고 있어요</Text>
+          <Text style={styles.loadingSubtitle}>
+            {'구역 안의 모든 도로를 찾는 중이에요\n최대 30초 정도 걸릴 수 있어요'}
+          </Text>
+
+          {/* Bouncing dots */}
+          <View style={styles.dotsRow}>
+            {([
+              { y: dot1Y, op: dot1Op },
+              { y: dot2Y, op: dot2Op },
+              { y: dot3Y, op: dot3Op },
+            ] as const).map(({ y, op }, i) => (
+              <Animated.View
+                key={i}
+                style={[styles.bounceDot, { transform: [{ translateY: y }], opacity: op }]}
+              />
+            ))}
+          </View>
+        </View>
+      )}
+      </View>
     </Modal>
   );
 }
@@ -354,4 +474,79 @@ const styles = StyleSheet.create({
   },
   createBtnDisabled: { backgroundColor: COLOR_EXPLORED },
   createText: { fontSize: 15, fontWeight: '700', color: '#fff' },
+  // Loading overlay
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(255,255,255,0.96)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 0,
+    paddingHorizontal: 32,
+  },
+  radarContainer: {
+    width: 190,
+    height: 190,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  radarRing: {
+    position: 'absolute',
+    width: 190,
+    height: 190,
+    borderRadius: 95,
+    borderWidth: 2,
+  },
+  radarCenter: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#4CAF50',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#4CAF50',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  radarCenterInner: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#fff',
+  },
+  areaNamePill: {
+    marginTop: 28,
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderColor: '#4CAF50',
+    borderRadius: 16,
+    backgroundColor: 'rgba(165,214,167,0.18)',
+  },
+  areaNamePillText: { fontSize: 15, fontWeight: '600', color: '#2E7D32' },
+  loadingTitle: {
+    marginTop: 18,
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#1A1A1A',
+    textAlign: 'center',
+  },
+  loadingSubtitle: {
+    marginTop: 8,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#8A8A8A',
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  dotsRow: { flexDirection: 'row', gap: 8, marginTop: 22 },
+  bounceDot: {
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+    backgroundColor: '#4CAF50',
+  },
 });
