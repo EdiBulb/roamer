@@ -150,7 +150,7 @@ export function RunSummaryScreen({ coveredKm, elapsedSeconds, route, onHome, act
 
       // 100% 달성 체크 — 아직 정복되지 않은 경우에만
       const totalColored = new Set([...activeArea.coloredSegmentIds, ...mergedColoredIds]);
-      if (!activeArea.conquered && totalColored.size >= activeArea.segments.length && activeArea.segments.length > 0) {
+      if (!activeArea.conquered && totalColored.size >= activeArea.segments.length * 0.8 && activeArea.segments.length > 0) {
         await setAreaConquered(activeArea.id);
         triggerConquestAnimation();
       }

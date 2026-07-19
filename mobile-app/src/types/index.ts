@@ -3,16 +3,16 @@ export type Difficulty = 'easy' | 'normal' | 'hard';
 export type TargetDistance = 1 | 3 | 5 | 10 | 'free';
 
 export interface Coordinate {
-  latitude: number;
-  longitude: number;
+  latitude: number; // 위도(남북)
+  longitude: number; // 경도(동서)
 }
 
 export interface RouteStep {
-  instruction: string;
-  distanceFromStartM: number;
-  streetName?: string;
+  instruction: string; // 이동 지시사항
+  distanceFromStartM: number; // 시작점으로부터의 거리(m)
+  streetName?: string; // 도로 이름
   coordinates: Coordinate[];
-  modifier?: string;
+  modifier?: string; // left, right, straight, u-turn, etc.
 }
 
 export interface RunRoute {
@@ -26,6 +26,7 @@ export interface RunRoute {
 
 export type RouteStatus = 'idle' | 'loading' | 'success' | 'error';
 
+// 완주한 런 기록
 export interface RunRecord {
   id: string;
   name: string;
@@ -51,7 +52,8 @@ export interface Area {
   name: string;
   center: Coordinate;
   radiusKm: number;
-  segments: RoadSegment[];
+  polygon?: Coordinate[];
+  segments: RoadSegment[]; // Area 내의 모든 도로 구간
   coloredSegmentIds: string[];
   createdAt: string;
   conquered?: boolean;

@@ -20,6 +20,7 @@ export function useLocation(): UseLocationResult {
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
 
+        // 폰 위치 권한 거부 시 에러 메시지 표시
         if (status !== 'granted') {
           if (!cancelled) setError('Location permission is required to use this app.');
           return;

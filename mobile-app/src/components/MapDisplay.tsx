@@ -56,6 +56,18 @@ function makeCircleGeoJSON(
   };
 }
 
+function makeAreaGeoJSON(area: import('../types').Area): GeoJSON.Feature<GeoJSON.Polygon> {
+  if (area.polygon && area.polygon.length >= 3) {
+    const coords = area.polygon.map((c): [number, number] => [c.longitude, c.latitude]);
+    return {
+      type: 'Feature',
+      properties: {},
+      geometry: { type: 'Polygon', coordinates: [[...coords, coords[0]]] },
+    };
+  }
+  return makeCircleGeoJSON(area.center, area.radiusKm);
+}
+
 function toLineGeoJSON(coords: Coordinate[]): GeoJSON.Feature<GeoJSON.LineString> {
   return {
     type: 'Feature',
@@ -243,9 +255,9 @@ export function MapDisplay({
     const active = areas.find((a) => a.id === activeAreaId);
     const others = areas.filter((a) => a.id !== activeAreaId);
     return {
-      activeCircleGeoJSON: active ? makeCircleGeoJSON(active.center, active.radiusKm) : null,
+      activeCircleGeoJSON: active ? makeAreaGeoJSON(active) : null,
       otherCirclesGeoJSON: others.length > 0
-        ? { type: 'FeatureCollection' as const, features: others.map((a) => makeCircleGeoJSON(a.center, a.radiusKm)) }
+        ? { type: 'FeatureCollection' as const, features: others.map((a) => makeAreaGeoJSON(a)) }
         : null,
     };
   }, [areas, activeAreaId]);
@@ -290,15 +302,27 @@ export function MapDisplay({
     if (isRunning || !activeAreaId) return;
     const area = areas.find((a) => a.id === activeAreaId);
     if (!area) return;
-    const { center, radiusKm } = area;
-    const deltaLat = (radiusKm * 1.4) / 111;
-    const deltaLng = deltaLat / Math.cos((center.latitude * Math.PI) / 180);
-    cameraRef.current?.fitBounds(
-      [center.longitude + deltaLng, center.latitude + deltaLat],
-      [center.longitude - deltaLng, center.latitude - deltaLat],
-      [60, 60, 60, 60],
-      600,
-    );
+
+    if (area.polygon && area.polygon.length >= 3) {
+      const lats = area.polygon.map((c) => c.latitude);
+      const lngs = area.polygon.map((c) => c.longitude);
+      cameraRef.current?.fitBounds(
+        [Math.max(...lngs), Math.max(...lats)],
+        [Math.min(...lngs), Math.min(...lats)],
+        [60, 60, 60, 60],
+        600,
+      );
+    } else {
+      const { center, radiusKm } = area;
+      const deltaLat = (radiusKm * 1.4) / 111;
+      const deltaLng = deltaLat / Math.cos((center.latitude * Math.PI) / 180);
+      cameraRef.current?.fitBounds(
+        [center.longitude + deltaLng, center.latitude + deltaLat],
+        [center.longitude - deltaLng, center.latitude - deltaLat],
+        [60, 60, 60, 60],
+        600,
+      );
+    }
   }, [activeAreaId]);
 
   // ── history routes GeoJSON (not running) ─────────────────────────────────

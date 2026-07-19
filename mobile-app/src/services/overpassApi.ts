@@ -116,6 +116,70 @@ function pointToSegmentDistanceM(
   return Math.sqrt(dLat * dLat + dLon * dLon) * R;
 }
 
+function isPointInPolygon(point: Coordinate, polygon: Coordinate[]): boolean {
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const xi = polygon[i].longitude, yi = polygon[i].latitude;
+    const xj = polygon[j].longitude, yj = polygon[j].latitude;
+    const intersect =
+      yi > point.latitude !== yj > point.latitude &&
+      point.longitude < ((xj - xi) * (point.latitude - yi)) / (yj - yi) + xi;
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+export async function fetchSegmentsInPolygon(polygon: Coordinate[]): Promise<RoadSegment[]> {
+  const polyStr = polygon.map((c) => `${c.latitude} ${c.longitude}`).join(' ');
+  const query = `
+    [out:json][timeout:30];
+    way["highway"~"^(${WALKABLE_HIGHWAY.join('|')})$"]
+      (poly:"${polyStr}");
+    out geom;
+  `;
+
+  const fetchWithTimeout = (url: string, timeoutMs: number) =>
+    Promise.race([
+      fetch(`${url}?data=${encodeURIComponent(query)}`, { method: 'GET' }),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error(`Timeout after ${timeoutMs}ms`)), timeoutMs),
+      ),
+    ]);
+
+  let lastError: unknown;
+  for (const url of OVERPASS_ENDPOINTS) {
+    try {
+      console.log(`[Overpass] Trying ${url}`);
+      const res = await fetchWithTimeout(url, 15000);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+
+      const segments: RoadSegment[] = (json.elements ?? [])
+        .filter((el: any) => el.type === 'way' && el.geometry?.length >= 2)
+        .map((el: any) => ({
+          id: String(el.id),
+          coordinates: el.geometry.map((pt: any) => ({
+            latitude: pt.lat,
+            longitude: pt.lon,
+          })),
+        }))
+        .map((seg: RoadSegment) => ({
+          ...seg,
+          coordinates: seg.coordinates.filter((c) => isPointInPolygon(c, polygon)),
+        }))
+        .filter((seg: RoadSegment) => seg.coordinates.length >= 2);
+
+      console.log(`[Overpass] Success: ${segments.length} segments from ${url}`);
+      return segments;
+    } catch (e) {
+      console.warn(`[Overpass] Failed ${url}:`, e);
+      lastError = e;
+    }
+  }
+
+  throw lastError ?? new Error('All Overpass endpoints failed');
+}
+
 export function matchTraceToSegments(
   trace: Coordinate[],
   segments: RoadSegment[],
