@@ -44,6 +44,7 @@ export function CreateAreaModal({ visible, location, onClose, onCreated }: Props
   const [name, setName] = useState('');
   const [fetchStatus, setFetchStatus] = useState<'idle' | 'loading' | 'error'>('idle');
   const cameraRef = useRef<MapboxGL.Camera>(null);
+  const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
 
   // Radar ring animated values (0 = ring start, 1 = ring end)
   const ring1Anim = useRef(new Animated.Value(0)).current;
@@ -103,6 +104,12 @@ export function CreateAreaModal({ visible, location, onClose, onCreated }: Props
     all.start();
     return () => all.stop();
   }, [fetchStatus]);
+
+
+  function isActiveVertex(i: number) {
+    if (draggingIndex !== null) return i === draggingIndex;
+    return i === vertices.length - 1;
+  }
 
   function reset() {
     setStep('draw');
@@ -216,14 +223,29 @@ export function CreateAreaModal({ visible, location, onClose, onCreated }: Props
               </MapboxGL.ShapeSource>
             )}
 
-            {/* Vertex dots */}
+            {/* Vertex dots — native Mapbox drag */}
             {vertices.map((v, i) => (
               <MapboxGL.PointAnnotation
                 key={`v-${i}`}
                 id={`vertex-${i}`}
                 coordinate={[v.longitude, v.latitude]}
+                draggable
+                onDragStart={() => setDraggingIndex(i)}
+                onDrag={(feature) => {
+                  const [lng, lat] = (feature.geometry as GeoJSON.Point).coordinates;
+                  setVertices((prev) =>
+                    prev.map((c, j) => j === i ? { latitude: lat, longitude: lng } : c)
+                  );
+                }}
+                onDragEnd={(feature) => {
+                  const [lng, lat] = (feature.geometry as GeoJSON.Point).coordinates;
+                  setVertices((prev) =>
+                    prev.map((c, j) => j === i ? { latitude: lat, longitude: lng } : c)
+                  );
+                  setDraggingIndex(null);
+                }}
               >
-                <View style={i === 0 ? styles.firstVertex : styles.vertex} />
+                <View style={isActiveVertex(i) ? styles.activeVertex : styles.vertex} />
               </MapboxGL.PointAnnotation>
             ))}
           </MapboxGL.MapView>
@@ -231,11 +253,13 @@ export function CreateAreaModal({ visible, location, onClose, onCreated }: Props
           {/* Instruction header */}
           <View style={[styles.header, { pointerEvents: 'none' }]}>
             <Text style={styles.headerText}>
-              {vertices.length === 0
+              {draggingIndex !== null
+                ? 'Drag to new position — release to place'
+                : vertices.length === 0
                 ? 'Tap on the map to draw your area'
                 : vertices.length < 3
                 ? `${vertices.length} point${vertices.length > 1 ? 's' : ''} — need at least 3`
-                : `${vertices.length} points — area ready`}
+                : `${vertices.length} points — hold a dot to move it`}
             </Text>
           </View>
 
@@ -422,7 +446,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#fff',
   },
-  firstVertex: {
+  activeVertex: {
     width: 16,
     height: 16,
     borderRadius: 8,
