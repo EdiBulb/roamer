@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Area } from '../types';
-import { deleteArea, renameArea } from '../services/areaStorage';
+import { deleteArea, renameArea, areAreasAdjacent } from '../services/areaStorage';
+import { MergeLoadingWebView } from './MergeLoadingWebView';
 import { COLOR_NEW } from '../constants';
 
 interface Props {
@@ -13,6 +14,7 @@ interface Props {
   onClose: () => void;
   onRenamed: (id: string, newName: string) => void;
   onDeleted: (id: string) => void;
+  onMerge: (areaA: Area, areaB: Area, newName: string) => Promise<void>;
 }
 
 const ALL_LEVELS = [
@@ -31,10 +33,62 @@ function getAreaLevel(pct: number) {
   return ALL_LEVELS[0];
 }
 
-export function MyAreasSheet({ visible, areas, activeAreaId, onSelect, onCreateNew, onClose, onRenamed, onDeleted }: Props) {
+export function MyAreasSheet({ visible, areas, activeAreaId, onSelect, onCreateNew, onClose, onRenamed, onDeleted, onMerge }: Props) {
   const [editingArea, setEditingArea] = useState<Area | null>(null);
   const [editName, setEditName] = useState('');
   const [levelModalArea, setLevelModalArea] = useState<Area | null>(null);
+  const [mergeMode, setMergeMode] = useState(false);
+  const [selectedForMerge, setSelectedForMerge] = useState<Area[]>([]);
+  const [mergeError, setMergeError] = useState('');
+  const [mergeNameModal, setMergeNameModal] = useState(false);
+  const [mergeName, setMergeName] = useState('');
+  const [merging, setMerging] = useState(false);
+
+  const conqueredAreas = areas.filter(a => {
+    const pct = (a.coloredSegmentIds.length / Math.max(a.segments.length, 1)) * 100;
+    return pct >= 80;
+  });
+
+  function handleMergeModeToggle() {
+    setMergeMode(m => !m);
+    setSelectedForMerge([]);
+    setMergeError('');
+  }
+
+  function handleMergeSelect(area: Area) {
+    setMergeError('');
+    const already = selectedForMerge.find(a => a.id === area.id);
+    if (already) {
+      setSelectedForMerge(selectedForMerge.filter(a => a.id !== area.id));
+      return;
+    }
+    if (selectedForMerge.length === 0) {
+      setSelectedForMerge([area]);
+      return;
+    }
+    const first = selectedForMerge[0];
+    if (!areAreasAdjacent(first, area)) {
+      setMergeError('These areas are not adjacent (must be within 300m)');
+      return;
+    }
+    const defaultName = `${first.name} + ${area.name}`;
+    setMergeName(defaultName);
+    setSelectedForMerge([first, area]);
+    setMergeNameModal(true);
+  }
+
+  async function handleConfirmMerge() {
+    if (selectedForMerge.length < 2 || !mergeName.trim()) return;
+    setMerging(true);
+    try {
+      await onMerge(selectedForMerge[0], selectedForMerge[1], mergeName.trim());
+      setMergeNameModal(false);
+      setMergeMode(false);
+      setSelectedForMerge([]);
+    } finally {
+      setMerging(false);
+    }
+  }
 
   function handleLongPress(area: Area) {
     setEditingArea(area);
@@ -66,35 +120,67 @@ export function MyAreasSheet({ visible, areas, activeAreaId, onSelect, onCreateN
         <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
         <View style={styles.sheet}>
           <View style={styles.handle} />
-          <Text style={styles.title}>My Areas</Text>
+          <View style={styles.titleRow}>
+            <Text style={styles.title}>My Areas</Text>
+            {areas.length >= 1 && (
+              <TouchableOpacity onPress={handleMergeModeToggle} activeOpacity={0.7}>
+                <Text style={[styles.mergeToggle, mergeMode && styles.mergeToggleActive]}>
+                  {mergeMode ? 'Cancel' : '⊕ Merge'}
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {mergeMode && (
+            <Text style={styles.mergeHint}>
+              {selectedForMerge.length === 0
+                ? 'Only areas 80%+ explored are shown.\nSelect one to merge.'
+                : 'Select a second area to merge with.'}
+            </Text>
+          )}
+          {mergeError !== '' && <Text style={styles.mergeError}>{mergeError}</Text>}
 
           <ScrollView style={styles.list} showsVerticalScrollIndicator={false}>
             {areas.length === 0 ? (
               <Text style={styles.empty}>No areas yet. Create one to start collecting streets.</Text>
             ) : (
-              areas.map((area) => {
+              (mergeMode ? conqueredAreas : areas).map((area) => {
                 const pct = Math.round(
                   (area.coloredSegmentIds.length / Math.max(area.segments.length, 1)) * 100,
                 );
                 const level = getAreaLevel(pct);
                 const isActive = area.id === activeAreaId;
+                const isConquered = pct >= 80;
+                const isSelected = selectedForMerge.some(a => a.id === area.id);
+                const dimmed = mergeMode && !isConquered;
                 return (
                   <TouchableOpacity
                     key={area.id}
-                    style={[styles.areaCard, isActive && styles.areaCardActive]}
-                    onPress={() => { onSelect(area); onClose(); }}
-                    onLongPress={() => handleLongPress(area)}
+                    style={[
+                      styles.areaCard,
+                      isActive && !mergeMode && styles.areaCardActive,
+                      isSelected && styles.areaCardSelected,
+                      dimmed && styles.areaCardDimmed,
+                    ]}
+                    onPress={() => {
+                      if (mergeMode) {
+                        if (isConquered) handleMergeSelect(area);
+                      } else {
+                        onSelect(area); onClose();
+                      }
+                    }}
+                    onLongPress={() => { if (!mergeMode) handleLongPress(area); }}
                     delayLongPress={400}
                     activeOpacity={0.75}
                   >
                     <View style={styles.areaCardLeft}>
-                      <Text style={[styles.areaName, isActive && styles.areaNameActive]}>
+                      <Text style={[styles.areaName, isActive && !mergeMode && styles.areaNameActive, isSelected && styles.areaNameSelected]}>
                         {area.conquered ? '🚩 ' : ''}{area.name}
                       </Text>
                       <Text style={styles.areaMeta}>{area.radiusKm} km radius · {area.segments.length} streets</Text>
                       <TouchableOpacity
                         style={[styles.levelChip, { borderColor: level.color }]}
-                        onPress={() => setLevelModalArea(area)}
+                        onPress={() => { if (!mergeMode) setLevelModalArea(area); }}
                         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                         activeOpacity={0.7}
                       >
@@ -104,8 +190,9 @@ export function MyAreasSheet({ visible, areas, activeAreaId, onSelect, onCreateN
                       </TouchableOpacity>
                     </View>
                     <View style={styles.areaCardRight}>
-                      <Text style={[styles.areaPct, isActive && styles.areaPctActive]}>{pct}%</Text>
-                      {isActive && <View style={styles.activeDot} />}
+                      <Text style={[styles.areaPct, isActive && !mergeMode && styles.areaPctActive, isSelected && styles.areaPctSelected]}>{pct}%</Text>
+                      {isSelected && <Text style={styles.checkmark}>✓</Text>}
+                      {isActive && !mergeMode && !isSelected && <View style={styles.activeDot} />}
                     </View>
                   </TouchableOpacity>
                 );
@@ -113,11 +200,13 @@ export function MyAreasSheet({ visible, areas, activeAreaId, onSelect, onCreateN
             )}
           </ScrollView>
 
-          <Text style={styles.hint}>Hold an area to rename it</Text>
+          <Text style={styles.hint}>{mergeMode ? '' : 'Hold an area to rename it'}</Text>
 
-          <TouchableOpacity style={styles.createBtn} onPress={() => { onClose(); onCreateNew(); }} activeOpacity={0.8}>
-            <Text style={styles.createBtnText}>＋  Create New Area</Text>
-          </TouchableOpacity>
+          {!mergeMode && (
+            <TouchableOpacity style={styles.createBtn} onPress={() => { onClose(); onCreateNew(); }} activeOpacity={0.8}>
+              <Text style={styles.createBtnText}>＋  Create New Area</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </Modal>
 
@@ -150,6 +239,50 @@ export function MyAreasSheet({ visible, areas, activeAreaId, onSelect, onCreateN
             </TouchableOpacity>
           </TouchableOpacity>
         </TouchableOpacity>
+      </Modal>
+
+      {/* Merge name modal */}
+      <Modal visible={mergeNameModal} transparent animationType="fade" onRequestClose={() => setMergeNameModal(false)}>
+        <View style={styles.renameOverlay}>
+          <View style={styles.renameCard}>
+            <Text style={styles.renameTitle}>Name the merged area</Text>
+            <Text style={styles.mergeModalSub}>
+              {selectedForMerge[0]?.name} + {selectedForMerge[1]?.name}
+            </Text>
+            <TextInput
+              style={styles.renameInput}
+              value={mergeName}
+              onChangeText={setMergeName}
+              maxLength={30}
+              autoFocus
+              selectTextOnFocus
+              returnKeyType="done"
+              onSubmitEditing={handleConfirmMerge}
+            />
+            <View style={styles.renameButtons}>
+              <TouchableOpacity style={styles.renameCancelBtn} onPress={() => { setMergeNameModal(false); setSelectedForMerge([]); }} activeOpacity={0.7}>
+                <Text style={styles.renameCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.renameSaveBtn, (!mergeName.trim() || merging) && styles.renameSaveBtnDisabled]}
+                onPress={handleConfirmMerge}
+                disabled={!mergeName.trim() || merging}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.renameSaveText}>{merging ? 'Merging…' : 'Merge'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Merge loading overlay */}
+      <Modal visible={merging} transparent animationType="fade">
+        <MergeLoadingWebView
+          areaAName={selectedForMerge[0]?.name ?? ''}
+          areaBName={selectedForMerge[1]?.name ?? ''}
+          mergedName={mergeName}
+        />
       </Modal>
 
       {/* Rename / Delete modal */}
@@ -212,7 +345,13 @@ const styles = StyleSheet.create({
     marginTop: 12,
     marginBottom: 16,
   },
-  title: { fontSize: 20, fontWeight: '800', color: '#1A1A1A', marginBottom: 16 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+  title: { fontSize: 20, fontWeight: '800', color: '#1A1A1A' },
+  mergeToggle: { fontSize: 14, fontWeight: '700', color: '#888', paddingVertical: 4, paddingHorizontal: 8 },
+  mergeToggleActive: { color: COLOR_NEW },
+  mergeHint: { fontSize: 12, color: '#888', marginBottom: 8, textAlign: 'center' },
+  mergeError: { fontSize: 12, color: '#E53935', marginBottom: 6, textAlign: 'center' },
+  mergeModalSub: { fontSize: 13, color: '#888', marginTop: -8 },
   list: { maxHeight: 340 },
   empty: { fontSize: 14, color: '#BDBDBD', textAlign: 'center', paddingVertical: 24 },
   hint: { fontSize: 11, color: '#BDBDBD', textAlign: 'center', marginTop: 8, marginBottom: 4 },
@@ -231,6 +370,15 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: COLOR_NEW,
   },
+  areaCardSelected: {
+    backgroundColor: '#FFF3E0',
+    borderWidth: 2,
+    borderColor: '#4CAF50',
+  },
+  areaCardDimmed: { opacity: 0.35 },
+  areaNameSelected: { color: '#4CAF50' },
+  areaPctSelected: { color: '#4CAF50' },
+  checkmark: { fontSize: 16, color: '#4CAF50', fontWeight: '800' },
   areaCardLeft: { flex: 1, gap: 4 },
   areaName: { fontSize: 16, fontWeight: '700', color: '#1A1A1A' },
   areaNameActive: { color: COLOR_NEW },

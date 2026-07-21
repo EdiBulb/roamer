@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import {
-  Animated, ActivityIndicator, Modal, StyleSheet,
+  Animated, ActivityIndicator, Keyboard, KeyboardAvoidingView, Modal, Platform, StyleSheet,
   Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import MapboxGL from '@rnmapbox/maps';
@@ -14,6 +14,7 @@ MapboxGL.setAccessToken(MAPBOX_TOKEN);
 interface Props {
   visible: boolean;
   location: Coordinate;
+  existingAreas?: Area[];
   onClose: () => void;
   onCreated: (area: Area) => void;
 }
@@ -38,7 +39,7 @@ function polygonRadiusKm(center: Coordinate, polygon: Coordinate[]): number {
   }));
 }
 
-export function CreateAreaModal({ visible, location, onClose, onCreated }: Props) {
+export function CreateAreaModal({ visible, location, existingAreas, onClose, onCreated }: Props) {
   const [step, setStep] = useState<Step>('draw');
   const [vertices, setVertices] = useState<Coordinate[]>([]);
   const [name, setName] = useState('');
@@ -140,6 +141,7 @@ export function CreateAreaModal({ visible, location, onClose, onCreated }: Props
 
   async function handleCreate() {
     if (!name.trim() || vertices.length < 3) return;
+    Keyboard.dismiss();
     setFetchStatus('loading');
     try {
       const segments: RoadSegment[] = await fetchSegmentsInPolygon(vertices);
@@ -163,6 +165,24 @@ export function CreateAreaModal({ visible, location, onClose, onCreated }: Props
       setFetchStatus('error');
     }
   }
+
+  // GeoJSON for existing areas overlay
+  const existingAreasGeoJSON: GeoJSON.FeatureCollection = {
+    type: 'FeatureCollection',
+    features: (existingAreas ?? [])
+      .filter(a => a.polygon && a.polygon.length >= 3)
+      .map(a => ({
+        type: 'Feature' as const,
+        properties: { name: a.name },
+        geometry: {
+          type: 'Polygon' as const,
+          coordinates: [[
+            ...a.polygon!.map(c => [c.longitude, c.latitude]),
+            [a.polygon![0].longitude, a.polygon![0].latitude],
+          ]],
+        },
+      })),
+  };
 
   // GeoJSON for the polygon outline during drawing
   const lineCoords = vertices.map((v) => [v.longitude, v.latitude]);
@@ -202,6 +222,34 @@ export function CreateAreaModal({ visible, location, onClose, onCreated }: Props
               centerCoordinate={[location.longitude, location.latitude]}
               zoomLevel={14}
             />
+
+            {/* User location */}
+            <MapboxGL.UserLocation visible />
+
+            {/* Existing areas */}
+            {existingAreasGeoJSON.features.length > 0 && (
+              <MapboxGL.ShapeSource id="existing-areas-src" shape={existingAreasGeoJSON}>
+                <MapboxGL.FillLayer
+                  id="existing-areas-fill"
+                  style={{ fillColor: '#2196F3', fillOpacity: 0.1 }}
+                />
+                <MapboxGL.LineLayer
+                  id="existing-areas-line"
+                  style={{ lineColor: '#2196F3', lineWidth: 2, lineDasharray: [3, 2] }}
+                />
+                <MapboxGL.SymbolLayer
+                  id="existing-areas-label"
+                  style={{
+                    textField: ['get', 'name'],
+                    textSize: 12,
+                    textColor: '#1565C0',
+                    textHaloColor: '#fff',
+                    textHaloWidth: 1.5,
+                    textFont: ['DIN Offc Pro Medium', 'Arial Unicode MS Regular'],
+                  }}
+                />
+              </MapboxGL.ShapeSource>
+            )}
 
             {/* Polygon fill */}
             {fillGeoJSON && (
@@ -288,7 +336,10 @@ export function CreateAreaModal({ visible, location, onClose, onCreated }: Props
         </View>
       ) : (
         /* Name step */
-        <View style={styles.nameContainer}>
+        <KeyboardAvoidingView
+          style={styles.nameContainer}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
           <View style={styles.nameCard}>
             <Text style={styles.title}>Name your area</Text>
             <Text style={styles.subtitle}>{vertices.length} points drawn</Text>
@@ -329,7 +380,7 @@ export function CreateAreaModal({ visible, location, onClose, onCreated }: Props
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       )}
 
       {/* ── Loading overlay (radar scan) ── */}

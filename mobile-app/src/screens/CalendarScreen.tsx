@@ -1,13 +1,10 @@
-import { useCallback, useRef, useState } from 'react';
-import { Animated, Image, Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { useCallback, useState } from 'react';
+import { Image, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRunHistory } from '../hooks/useRunHistory';
-import { getTotalExploredCount } from '../services/streetTracker';
+import { getTotalColoredSegmentCount } from '../services/areaStorage';
 import { BADGES } from '../services/badges';
-import { SettingsModal } from '../components/SettingsModal';
-import { useSettings } from '../hooks/useSettings';
 
 const STAMP_IMG = require('../../assets/icons/icon-stamp.png');
 
@@ -84,22 +81,12 @@ function formatTotalTime(seconds: number): string {
 
 export function CalendarScreen() {
   const { history, refresh } = useRunHistory();
-  const { settings, update: updateSettings } = useSettings();
   const [badgeModalVisible, setBadgeModalVisible] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-  const gearScale = useRef(new Animated.Value(1)).current;
-
-  function onGearPressIn() {
-    Animated.spring(gearScale, { toValue: 0.82, useNativeDriver: true, speed: 50, bounciness: 4 }).start();
-  }
-  function onGearPressOut() {
-    Animated.spring(gearScale, { toValue: 1, useNativeDriver: true, speed: 20, bounciness: 8 }).start();
-  }
   const [totalStreets, setTotalStreets] = useState(0);
 
   useFocusEffect(useCallback(() => {
     refresh();
-    getTotalExploredCount().then(setTotalStreets);
+    getTotalColoredSegmentCount().then(setTotalStreets);
   }, [refresh]));
 
   const markedDates = history.reduce<Record<string, { marked: boolean; dotColor: string; selected?: boolean; selectedColor?: string }>>((acc, record) => {
@@ -137,26 +124,9 @@ export function CalendarScreen() {
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <Text style={styles.title}>Trail</Text>
-          <Pressable
-            style={styles.gearBtn}
-            onPress={() => setShowSettings(true)}
-            onPressIn={onGearPressIn}
-            onPressOut={onGearPressOut}
-          >
-            <Animated.View style={{ transform: [{ scale: gearScale }] }}>
-              <Ionicons name="settings-outline" size={26} color="#1A1A1A" />
-            </Animated.View>
-          </Pressable>
         </View>
         <Text style={styles.subtitle}>Your running habit</Text>
       </View>
-
-      <SettingsModal
-        visible={showSettings}
-        settings={settings}
-        onUpdate={updateSettings}
-        onClose={() => setShowSettings(false)}
-      />
 
       {/* This month stats */}
       <View style={styles.section}>
@@ -227,7 +197,7 @@ export function CalendarScreen() {
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setBadgeModalVisible(false)}>
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>My Badges</Text>
-            <Text style={styles.modalStreets}>{totalStreets} streets explored</Text>
+            <Text style={styles.modalStreets}>{totalStreets} segments explored</Text>
             {BADGES.map((badge) => {
               const earned = totalStreets >= badge.requiredStreets;
               return (

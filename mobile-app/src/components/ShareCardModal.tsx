@@ -1,15 +1,10 @@
 import { useMemo, useRef, useState } from 'react';
-import { Alert, Image, Modal, NativeModules, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { captureRef } from 'react-native-view-shot';
+import * as MediaLibrary from 'expo-media-library';
+import * as Sharing from 'expo-sharing';
 
-function isNativeAvailable(): boolean {
-  return !!(
-    NativeModules.ExpoMediaLibrary ||
-    NativeModules.ExpoMediaLibraryNext ||
-    NativeModules.RNMediaLibrary
-  );
-}
 import { MAPBOX_TOKEN, COLOR_NEW } from '../constants';
 import { Area, Badge, Coordinate } from '../types';
 
@@ -105,15 +100,10 @@ export function ShareCardModal({ visible, onClose, area, todayColoredIds, covere
   }
 
   async function handleSave() {
-    if (!isNativeAvailable()) {
-      Alert.alert('EAS 빌드 필요', 'Save 기능은 앱 업데이트 후 사용 가능해요.');
-      return;
-    }
     setBusy(true);
     const uri = await doCapture();
     if (!uri) { setBusy(false); return; }
     try {
-      const MediaLibrary = await import('expo-media-library');
       const { granted } = await MediaLibrary.requestPermissionsAsync();
       if (!granted) {
         Alert.alert('Permission required', 'Please allow access to your photo library.');
@@ -129,15 +119,10 @@ export function ShareCardModal({ visible, onClose, area, todayColoredIds, covere
   }
 
   async function handleShare() {
-    if (!isNativeAvailable()) {
-      Alert.alert('EAS 빌드 필요', 'Share 기능은 앱 업데이트 후 사용 가능해요.');
-      return;
-    }
     setBusy(true);
     const uri = await doCapture();
     if (!uri) { setBusy(false); return; }
     try {
-      const Sharing = await import('expo-sharing');
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(uri, { mimeType: 'image/png', dialogTitle: 'Share your Roamer run!' });
       }

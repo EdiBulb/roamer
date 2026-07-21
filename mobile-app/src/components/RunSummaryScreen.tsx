@@ -5,10 +5,9 @@ import MapboxGL from '@rnmapbox/maps';
 import { MAPBOX_TOKEN, COLOR_NEW, COLOR_OVERLAP, COLOR_OUTSIDE } from '../constants';
 import { Area, Badge, Coordinate, RunRecord, RunRoute } from '../types';
 import { saveRunRecord } from '../services/storage';
-import { findNewStreets, getTotalExploredCount, saveNewStreets } from '../services/streetTracker';
 import { getNewlyEarnedBadges } from '../services/badges';
 import { matchTraceToSegments } from '../services/overpassApi';
-import { setAreaConquered, updateAreaColoredSegments } from '../services/areaStorage';
+import { getTotalColoredSegmentCount, setAreaConquered, updateAreaColoredSegments } from '../services/areaStorage';
 import { classifyRouteCoordinates } from '../services/routeClassifier';
 import { ShareCardModal } from './ShareCardModal';
 
@@ -48,12 +47,14 @@ function defaultRunName(): string {
 }
 
 function getBoundingBox(coordinates: Coordinate[]) {
+  if (coordinates.length === 0) {
+    return { ne: [0, 0] as [number, number], sw: [0, 0] as [number, number] };
+  }
   const lats = coordinates.map((c) => c.latitude);
   const lngs = coordinates.map((c) => c.longitude);
-  return {
-    ne: [Math.max(...lngs), Math.max(...lats)] as [number, number],
-    sw: [Math.min(...lngs), Math.min(...lats)] as [number, number],
-  };
+  const ne: [number, number] = [Math.max(...lngs) + 0.001, Math.max(...lats) + 0.001];
+  const sw: [number, number] = [Math.min(...lngs) - 0.001, Math.min(...lats) - 0.001];
+  return { ne, sw };
 }
 
 export function RunSummaryScreen({ coveredKm, elapsedSeconds, route, onHome, activeArea, gpsTrace, liveColoredIds }: Props) {
@@ -63,7 +64,6 @@ export function RunSummaryScreen({ coveredKm, elapsedSeconds, route, onHome, act
   const [newStreetCount, setNewStreetCount] = useState<number | null>(null);
   const [badgeModalVisible, setBadgeModalVisible] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [savedNewStreets, setSavedNewStreets] = useState<string[]>([]);
   const [showConquest, setShowConquest] = useState(false);
   const [savedColoredIds, setSavedColoredIds] = useState<string[]>([]);
   const [showShareCard, setShowShareCard] = useState(false);
@@ -72,7 +72,8 @@ export function RunSummaryScreen({ coveredKm, elapsedSeconds, route, onHome, act
 
   const bounds = getBoundingBox(route.coordinates);
 
-  function toLineFeature(coords: import('../types').Coordinate[]): GeoJSON.Feature<GeoJSON.LineString> {
+  function toLineFeature(coords: import('../types').Coordinate[]): GeoJSON.Feature<GeoJSON.LineString> | null {
+    if (coords.length < 2) return null;
     return {
       type: 'Feature',
       properties: {},
@@ -87,15 +88,15 @@ export function RunSummaryScreen({ coveredKm, elapsedSeconds, route, onHome, act
   }, []);
 
   const overlapGeoJSON = routeClassification && routeClassification.overlapLines.length > 0
-    ? { type: 'FeatureCollection' as const, features: routeClassification.overlapLines.map(toLineFeature) }
+    ? { type: 'FeatureCollection' as const, features: routeClassification.overlapLines.map(toLineFeature).filter((f): f is GeoJSON.Feature<GeoJSON.LineString> => f !== null) }
     : null;
   const newTerritoryGeoJSON = routeClassification && routeClassification.newLines.length > 0
-    ? { type: 'FeatureCollection' as const, features: routeClassification.newLines.map(toLineFeature) }
+    ? { type: 'FeatureCollection' as const, features: routeClassification.newLines.map(toLineFeature).filter((f): f is GeoJSON.Feature<GeoJSON.LineString> => f !== null) }
     : null;
   const outsideGeoJSON = routeClassification && routeClassification.outsideLines.length > 0
-    ? { type: 'FeatureCollection' as const, features: routeClassification.outsideLines.map(toLineFeature) }
+    ? { type: 'FeatureCollection' as const, features: routeClassification.outsideLines.map(toLineFeature).filter((f): f is GeoJSON.Feature<GeoJSON.LineString> => f !== null) }
     : null;
-  const plainRouteGeoJSON = !routeClassification ? toLineFeature(route.coordinates) : null;
+  const plainRouteGeoJSON = !routeClassification && route.coordinates.length >= 2 ? toLineFeature(route.coordinates) : null;
 
   function triggerConquestAnimation() {
     flagScale.setValue(0);
@@ -108,25 +109,6 @@ export function RunSummaryScreen({ coveredKm, elapsedSeconds, route, onHome, act
   }
 
   async function handleSave() {
-    const coveredM = coveredKm * 1000;
-    const coveredStreetNames = [
-      ...new Set(
-        route.steps
-          .filter(s => s.streetName && s.distanceFromStartM <= coveredM)
-          .map(s => s.streetName as string)
-      ),
-    ];
-    const prevTotal = await getTotalExploredCount();
-    const newStreets = await findNewStreets(coveredStreetNames);
-    await saveNewStreets(newStreets);
-    const newTotal = await getTotalExploredCount();
-    const earned = getNewlyEarnedBadges(prevTotal, newTotal);
-
-    const newStreetsSet = new Set(newStreets);
-    const newStreetSegments = route.steps
-      .filter(s => s.streetName && newStreetsSet.has(s.streetName) && s.coordinates.length > 0)
-      .map(s => s.coordinates);
-
     const trace = gpsTrace && gpsTrace.length >= 2 ? gpsTrace : null;
 
     const record: RunRecord = {
@@ -136,11 +118,12 @@ export function RunSummaryScreen({ coveredKm, elapsedSeconds, route, onHome, act
       distanceKm: coveredKm,
       elapsedSeconds,
       routeCoordinates: route.coordinates,
-      newStreets,
-      newStreetSegments: newStreetSegments.length > 0 ? newStreetSegments : undefined,
+      newStreets: [],
       gpsTrace: trace ?? undefined,
       areaId: activeArea?.id,
     };
+
+    const prevTotal = await getTotalColoredSegmentCount();
 
     let mergedColoredIds: string[] = [];
     if (activeArea && activeArea.segments.length > 0) {
@@ -148,7 +131,7 @@ export function RunSummaryScreen({ coveredKm, elapsedSeconds, route, onHome, act
       mergedColoredIds = Array.from(new Set([...matched, ...(liveColoredIds ?? [])]));
       if (mergedColoredIds.length > 0) await updateAreaColoredSegments(activeArea.id, mergedColoredIds);
 
-      // 100% 달성 체크 — 아직 정복되지 않은 경우에만
+      // 80% 달성 체크 — 아직 정복되지 않은 경우에만
       const totalColored = new Set([...activeArea.coloredSegmentIds, ...mergedColoredIds]);
       if (!activeArea.conquered && totalColored.size >= activeArea.segments.length * 0.8 && activeArea.segments.length > 0) {
         await setAreaConquered(activeArea.id);
@@ -158,8 +141,10 @@ export function RunSummaryScreen({ coveredKm, elapsedSeconds, route, onHome, act
 
     await saveRunRecord({ ...record, coloredSegmentIds: mergedColoredIds });
 
-    setNewStreetCount(newStreets.length);
-    setSavedNewStreets(newStreets);
+    const newTotal = await getTotalColoredSegmentCount();
+    const earned = getNewlyEarnedBadges(prevTotal, newTotal);
+
+    setNewStreetCount(newTotal - prevTotal);
     setSavedColoredIds(mergedColoredIds);
     setSaved(true);
     if (earned.length > 0) {
@@ -216,8 +201,8 @@ export function RunSummaryScreen({ coveredKm, elapsedSeconds, route, onHome, act
         <View style={styles.streetsBanner}>
           <Text style={styles.streetsBannerText}>
             {newStreetCount > 0
-              ? `🗺️ ${newStreetCount} new street${newStreetCount !== 1 ? 's' : ''} discovered!`
-              : '📍 No new streets this time'}
+              ? `🗺️ ${newStreetCount} new segment${newStreetCount !== 1 ? 's' : ''} explored!`
+              : '📍 No new segments this time'}
           </Text>
         </View>
       )}

@@ -18,7 +18,7 @@ import { useRunHistory } from '../hooks/useRunHistory';
 import { CreateAreaModal } from '../components/CreateAreaModal';
 import { MyAreasSheet } from '../components/MyAreasSheet';
 import { FollowMode } from '../components/MapDisplay';
-import { loadAreas } from '../services/areaStorage';
+import { loadAreas, mergeAreas } from '../services/areaStorage';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback } from 'react';
 
@@ -269,7 +269,7 @@ export function RunScreen() {
     setBearing(0);
   }
 
-  if (isFinished && gpsTrace.length >= 2) {
+  if (isFinished && gpsTrace.length >= 1) {
     const runRoute = {
       coordinates: gpsTrace,
       distanceKm: coveredKm,
@@ -372,11 +372,21 @@ export function RunScreen() {
               return next;
             });
           }}
+          onMerge={async (areaA, areaB, newName) => {
+            const merged = await mergeAreas(areaA, areaB, newName);
+            const updated = await loadAreas();
+            setAreas(updated);
+            if (activeArea?.id === areaA.id || activeArea?.id === areaB.id) {
+              setActiveArea(merged);
+              activeAreaIdRef.current = merged.id;
+            }
+          }}
         />
 
         <CreateAreaModal
           visible={showCreateArea}
           location={displayLocation ?? { latitude: 0, longitude: 0 }}
+          existingAreas={areas}
           onClose={() => setShowCreateArea(false)}
           onCreated={(area) => {
             setAreas((prev) => [area, ...prev.filter((a) => a.id !== area.id)]);
