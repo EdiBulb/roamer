@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Area } from '../types';
 import { deleteArea, renameArea, areAreasAdjacent } from '../services/areaStorage';
 import { MergeLoadingWebView } from './MergeLoadingWebView';
@@ -34,6 +35,7 @@ function getAreaLevel(pct: number) {
 }
 
 export function MyAreasSheet({ visible, areas, activeAreaId, onSelect, onCreateNew, onClose, onRenamed, onDeleted, onMerge }: Props) {
+  const insets = useSafeAreaInsets();
   const [editingArea, setEditingArea] = useState<Area | null>(null);
   const [editName, setEditName] = useState('');
   const [levelModalArea, setLevelModalArea] = useState<Area | null>(null);
@@ -118,7 +120,7 @@ export function MyAreasSheet({ visible, areas, activeAreaId, onSelect, onCreateN
     <>
       <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
         <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
-        <View style={styles.sheet}>
+        <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 24) }]}>
           <View style={styles.handle} />
           <View style={styles.titleRow}>
             <Text style={styles.title}>My Areas</Text>
@@ -333,7 +335,6 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingHorizontal: 24,
-    paddingBottom: 40,
     maxHeight: '75%',
   },
   handle: {

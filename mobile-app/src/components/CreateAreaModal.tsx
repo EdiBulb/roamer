@@ -3,6 +3,7 @@ import {
   Animated, ActivityIndicator, Keyboard, KeyboardAvoidingView, Modal, Platform, StyleSheet,
   Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapboxGL from '@rnmapbox/maps';
 import { Coordinate, Area, RoadSegment } from '../types';
 import { fetchSegmentsInPolygon } from '../services/overpassApi';
@@ -40,6 +41,7 @@ function polygonRadiusKm(center: Coordinate, polygon: Coordinate[]): number {
 }
 
 export function CreateAreaModal({ visible, location, existingAreas, onClose, onCreated }: Props) {
+  const insets = useSafeAreaInsets();
   const [step, setStep] = useState<Step>('draw');
   const [vertices, setVertices] = useState<Coordinate[]>([]);
   const [name, setName] = useState('');
@@ -312,7 +314,7 @@ export function CreateAreaModal({ visible, location, existingAreas, onClose, onC
           </View>
 
           {/* Bottom controls */}
-          <View style={styles.controls}>
+          <View style={[styles.controls, { bottom: Math.max(insets.bottom, 24) }]}>
             <TouchableOpacity style={styles.cancelBtn} onPress={handleClose} activeOpacity={0.7}>
               <Text style={styles.cancelText}>✕ Cancel</Text>
             </TouchableOpacity>
@@ -458,7 +460,6 @@ const styles = StyleSheet.create({
   headerText: { color: '#fff', fontSize: 14, fontWeight: '600', textAlign: 'center' },
   controls: {
     position: 'absolute',
-    bottom: 40,
     left: 16,
     right: 16,
     flexDirection: 'row',
