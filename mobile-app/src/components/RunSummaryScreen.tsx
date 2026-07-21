@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { Animated, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import MapboxGL from '@rnmapbox/maps';
 import { MAPBOX_TOKEN, COLOR_NEW, COLOR_OVERLAP, COLOR_OUTSIDE } from '../constants';
@@ -10,6 +10,7 @@ import { matchTraceToSegments } from '../services/overpassApi';
 import { getTotalColoredSegmentCount, setAreaConquered, updateAreaColoredSegments } from '../services/areaStorage';
 import { classifyRouteCoordinates } from '../services/routeClassifier';
 import { ShareCardModal } from './ShareCardModal';
+import { AreaConquestWebView } from './AreaConquestWebView';
 
 MapboxGL.setAccessToken(MAPBOX_TOKEN);
 
@@ -65,10 +66,9 @@ export function RunSummaryScreen({ coveredKm, elapsedSeconds, route, onHome, act
   const [badgeModalVisible, setBadgeModalVisible] = useState(false);
   const [saved, setSaved] = useState(false);
   const [showConquest, setShowConquest] = useState(false);
-  const [savedColoredIds, setSavedColoredIds] = useState<string[]>([]);
+  const [conquestPct, setConquestPct] = useState(0);
+  const [savedColoredIds, setSavedColoredIds] = useState<string[]>([])
   const [showShareCard, setShowShareCard] = useState(false);
-  const flagScale = useRef(new Animated.Value(0)).current;
-  const flagOpacity = useRef(new Animated.Value(0)).current;
 
   const bounds = getBoundingBox(route.coordinates);
 
@@ -98,13 +98,8 @@ export function RunSummaryScreen({ coveredKm, elapsedSeconds, route, onHome, act
     : null;
   const plainRouteGeoJSON = !routeClassification && route.coordinates.length >= 2 ? toLineFeature(route.coordinates) : null;
 
-  function triggerConquestAnimation() {
-    flagScale.setValue(0);
-    flagOpacity.setValue(0);
-    Animated.parallel([
-      Animated.spring(flagScale, { toValue: 1, friction: 4, tension: 40, useNativeDriver: true }),
-      Animated.timing(flagOpacity, { toValue: 1, duration: 300, useNativeDriver: true }),
-    ]).start();
+  function triggerConquestAnimation(pct: number) {
+    setConquestPct(pct);
     setShowConquest(true);
   }
 
@@ -135,7 +130,8 @@ export function RunSummaryScreen({ coveredKm, elapsedSeconds, route, onHome, act
       const totalColored = new Set([...activeArea.coloredSegmentIds, ...mergedColoredIds]);
       if (!activeArea.conquered && totalColored.size >= activeArea.segments.length * 0.8 && activeArea.segments.length > 0) {
         await setAreaConquered(activeArea.id);
-        triggerConquestAnimation();
+        const pct = Math.round((totalColored.size / activeArea.segments.length) * 100);
+        triggerConquestAnimation(pct);
       }
     }
 
@@ -282,25 +278,6 @@ export function RunSummaryScreen({ coveredKm, elapsedSeconds, route, onHome, act
         </TouchableOpacity>
       )}
 
-      {/* Conquest celebration modal */}
-      <Modal visible={showConquest} transparent animationType="fade">
-        <View style={styles.conquestOverlay}>
-          <View style={styles.conquestCard}>
-            <Animated.Text style={[styles.conquestFlag, { transform: [{ scale: flagScale }], opacity: flagOpacity }]}>
-              🚩
-            </Animated.Text>
-            <Text style={styles.conquestTitle}>Conquered!</Text>
-            <Text style={styles.conquestArea}>{activeArea?.name}</Text>
-            <View style={styles.masterBadge}>
-              <Text style={styles.masterBadgeText}>👑 Master Explorer</Text>
-            </View>
-            <Text style={styles.conquestSub}>You've explored every street in this area.</Text>
-            <TouchableOpacity style={styles.conquestBtn} onPress={() => setShowConquest(false)} activeOpacity={0.8}>
-              <Text style={styles.conquestBtnText}>Plant the Flag!</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
 
       {/* Badge achievement modal */}
       <Modal visible={badgeModalVisible} transparent animationType="fade">
@@ -332,6 +309,14 @@ export function RunSummaryScreen({ coveredKm, elapsedSeconds, route, onHome, act
         todayColoredIds={savedColoredIds}
         coveredKm={coveredKm}
         earnedBadge={newBadges[newBadges.length - 1] ?? null}
+      />
+    )}
+
+    {showConquest && activeArea && (
+      <AreaConquestWebView
+        areaName={activeArea.name}
+        pct={conquestPct}
+        onClose={() => setShowConquest(false)}
       />
     )}
     </>
@@ -425,44 +410,6 @@ const styles = StyleSheet.create({
     borderColor: '#E0E0E0',
   },
   shareCardButtonText: { color: '#555', fontSize: 15, fontWeight: '600' },
-  // Conquest modal
-  conquestOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.65)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 32,
-  },
-  conquestCard: {
-    backgroundColor: '#fff',
-    borderRadius: 28,
-    padding: 32,
-    width: '100%',
-    alignItems: 'center',
-    gap: 10,
-  },
-  conquestFlag: { fontSize: 72, marginBottom: 4 },
-  conquestTitle: { fontSize: 32, fontWeight: '900', color: '#1A1A1A', letterSpacing: -1 },
-  conquestArea: { fontSize: 17, color: '#888', fontWeight: '600' },
-  masterBadge: {
-    backgroundColor: '#FFF9C4',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderWidth: 1.5,
-    borderColor: '#FFD700',
-    marginVertical: 4,
-  },
-  masterBadgeText: { fontSize: 15, fontWeight: '800', color: '#B8860B' },
-  conquestSub: { fontSize: 13, color: '#BDBDBD', textAlign: 'center' },
-  conquestBtn: {
-    marginTop: 8,
-    backgroundColor: '#1A1A1A',
-    borderRadius: 20,
-    paddingVertical: 15,
-    paddingHorizontal: 48,
-  },
-  conquestBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   // Badge modal
   modalOverlay: {
     flex: 1,
