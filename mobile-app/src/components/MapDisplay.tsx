@@ -422,16 +422,21 @@ export function MapDisplay({
           </MapboxGL.ShapeSource>
         )}
 
-        {/* ── active area circle (not running) ── */}
-        {activeCircleGeoJSON && !isRunning && (
+        {/* ── active area circle ── */}
+        {activeCircleGeoJSON && (
           <MapboxGL.ShapeSource id="area-circle-active" shape={activeCircleGeoJSON}>
             <MapboxGL.FillLayer
               id="area-circle-active-fill"
-              style={{ fillColor: COLOR_NEW, fillOpacity: 0.08 }}
+              style={{ fillColor: COLOR_NEW, fillOpacity: isRunning ? 0 : 0.08 }}
             />
             <MapboxGL.LineLayer
               id="area-circle-active-border"
-              style={{ lineColor: COLOR_NEW, lineWidth: 2.5, lineOpacity: 0.9, lineDasharray: [4, 3] }}
+              style={{
+                lineColor: COLOR_NEW,
+                lineWidth: isRunning ? 2 : 2.5,
+                lineOpacity: isRunning ? 0.6 : 0.9,
+                lineDasharray: [4, 3],
+              }}
             />
           </MapboxGL.ShapeSource>
         )}

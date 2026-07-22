@@ -117,6 +117,27 @@ export function CalendarScreen() {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   })).size;
 
+  // Current streak: consecutive days with a run ending today or yesterday
+  const currentStreak = (() => {
+    function localDateStr(d: Date) {
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+    const daySet = new Set(history.map((r) => localDateStr(new Date(r.date))));
+    const cursor = new Date();
+    cursor.setHours(0, 0, 0, 0);
+    // Allow streak if last run was today or yesterday
+    if (!daySet.has(localDateStr(cursor))) {
+      cursor.setDate(cursor.getDate() - 1);
+      if (!daySet.has(localDateStr(cursor))) return 0;
+    }
+    let streak = 0;
+    while (daySet.has(localDateStr(cursor))) {
+      streak++;
+      cursor.setDate(cursor.getDate() - 1);
+    }
+    return streak;
+  })();
+
   const monthName = now.toLocaleDateString('en-US', { month: 'long' });
 
   return (
@@ -148,6 +169,14 @@ export function CalendarScreen() {
           </View>
         </View>
       </View>
+
+      {/* Current streak */}
+      {currentStreak > 0 && (
+        <View style={styles.streakBadge}>
+          <Text style={styles.streakLabel}>CURRENT STREAK</Text>
+          <Text style={styles.streakText}>🔥 {currentStreak} day{currentStreak !== 1 ? 's' : ''}</Text>
+        </View>
+      )}
 
       {/* Calendar */}
       <Calendar
@@ -278,6 +307,21 @@ const styles = StyleSheet.create({
   statDivider: { width: 1, height: 40, backgroundColor: '#E0E0E0' },
   statValue: { fontSize: 24, fontWeight: '700', color: '#1A1A1A' },
   statLabel: { fontSize: 12, color: '#888', letterSpacing: 0.5 },
+  streakBadge: {
+    alignItems: 'center',
+    alignSelf: 'center',
+    marginTop: 12,
+    marginBottom: 4,
+    backgroundColor: '#FFF3E0',
+    borderRadius: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 28,
+    borderWidth: 1,
+    borderColor: '#FFB74D',
+    gap: 4,
+  },
+  streakText: { fontSize: 22, fontWeight: '800', color: '#E65100' },
+  streakLabel: { fontSize: 11, fontWeight: '700', color: '#BF360C', letterSpacing: 1 },
   badgeButton: {
     marginTop: 20,
     backgroundColor: '#F1F8E9',

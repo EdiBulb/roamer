@@ -258,24 +258,21 @@ export function RunSummaryScreen({ coveredKm, elapsedSeconds, route, onHome, act
         )}
       </View>
 
-      {/* Save / Done button */}
-      <TouchableOpacity
-        style={styles.saveButton}
-        onPress={saved ? handleDone : handleSave}
-        activeOpacity={0.8}
-      >
-        <Text style={styles.saveButtonText}>{saved ? 'Done' : 'Save & Go Home'}</Text>
-      </TouchableOpacity>
-
-      {/* Share card button — only after save and only if an area was active */}
-      {saved && activeArea && (
-        <TouchableOpacity
-          style={styles.shareCardButton}
-          onPress={() => setShowShareCard(true)}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.shareCardButtonText}>📷  Share this run</Text>
+      {!saved ? (
+        <TouchableOpacity style={styles.saveButton} onPress={handleSave} activeOpacity={0.8}>
+          <Text style={styles.saveButtonText}>Save & Go Home</Text>
         </TouchableOpacity>
+      ) : (
+        <View style={styles.buttonRow}>
+          <TouchableOpacity style={styles.doneButton} onPress={handleDone} activeOpacity={0.8}>
+            <Text style={styles.doneButtonText}>Done</Text>
+          </TouchableOpacity>
+          {activeArea && (
+            <TouchableOpacity style={styles.shareButton} onPress={() => setShowShareCard(true)} activeOpacity={0.8}>
+              <Text style={styles.shareButtonText}>📷  Share</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       )}
 
 
@@ -394,22 +391,36 @@ const styles = StyleSheet.create({
     backgroundColor: '#4CAF50',
     marginHorizontal: 24,
     marginTop: 24,
+    marginBottom: 56,
     paddingVertical: 16,
     borderRadius: 28,
     alignItems: 'center',
   },
   saveButtonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  shareCardButton: {
+  buttonRow: {
+    flexDirection: 'row',
     marginHorizontal: 24,
-    marginTop: 10,
+    marginTop: 24,
     marginBottom: 56,
-    paddingVertical: 14,
+    gap: 12,
+  },
+  doneButton: {
+    flex: 1,
+    backgroundColor: '#4CAF50',
+    paddingVertical: 16,
+    borderRadius: 28,
+    alignItems: 'center',
+  },
+  doneButtonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  shareButton: {
+    flex: 1,
+    paddingVertical: 16,
     borderRadius: 28,
     alignItems: 'center',
     borderWidth: 1.5,
     borderColor: '#E0E0E0',
   },
-  shareCardButtonText: { color: '#555', fontSize: 15, fontWeight: '600' },
+  shareButtonText: { color: '#555', fontSize: 15, fontWeight: '600' },
   // Badge modal
   modalOverlay: {
     flex: 1,
