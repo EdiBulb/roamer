@@ -40,8 +40,8 @@ html,body{width:100%;height:100%;overflow:hidden;background:#0D0D1A;font-family:
   </div>
 
   <div style="position:absolute;bottom:16vh;left:0;right:0;text-align:center;padding:0 32px">
-    <div style="font-size:21px;font-weight:700;letter-spacing:-.4px;color:#FFFFFF">영역을 합치고 있어요</div>
-    <div style="margin-top:9px;font-size:14px;letter-spacing:-.2px;color:#8A8AA0">새 구역의 도로를 불러오는 중이에요</div>
+    <div style="font-size:21px;font-weight:700;letter-spacing:-.4px;color:#FFFFFF">Merging areas...</div>
+    <div style="margin-top:9px;font-size:14px;letter-spacing:-.2px;color:#8A8AA0">Fetching streets for the new territory</div>
     <div style="margin-top:26px;display:flex;justify-content:center;gap:8px">
       <span style="width:7px;height:7px;border-radius:50%;background:#FFD700;display:inline-block;animation:amDot 1.4s ease-in-out infinite"></span>
       <span style="width:7px;height:7px;border-radius:50%;background:#5FD9BD;display:inline-block;animation:amDot 1.4s ease-in-out .2s infinite"></span>

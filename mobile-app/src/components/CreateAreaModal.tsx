@@ -418,9 +418,9 @@ export function CreateAreaModal({ visible, location, existingAreas, onClose, onC
             <Text style={styles.areaNamePillText}>{name}</Text>
           </View>
 
-          <Text style={styles.loadingTitle}>거리를 불러오고 있어요</Text>
+          <Text style={styles.loadingTitle}>Fetching streets...</Text>
           <Text style={styles.loadingSubtitle}>
-            {'구역 안의 모든 도로를 찾는 중이에요\n최대 30초 정도 걸릴 수 있어요'}
+            {'Finding all roads inside your area\nThis may take up to 30 seconds'}
           </Text>
 
           {/* Bouncing dots */}
