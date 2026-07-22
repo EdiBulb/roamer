@@ -16,37 +16,36 @@ export function useLocation(): UseLocationResult {
     // cancelled flag prevents setState calls after the component unmounts
     let cancelled = false;
 
-    async function fetchLocation() {
+    let sub: Location.LocationSubscription | null = null;
+
+    async function startWatching() {
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
-
-        // 폰 위치 권한 거부 시 에러 메시지 표시
         if (status !== 'granted') {
           if (!cancelled) setError('Location permission is required to use this app.');
+          if (!cancelled) setLoading(false);
           return;
         }
 
-        const result = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.High,
-        });
-
-        if (!cancelled) {
-          setLocation({
-            latitude: result.coords.latitude,
-            longitude: result.coords.longitude,
-          });
-        }
+        sub = await Location.watchPositionAsync(
+          { accuracy: Location.Accuracy.High, timeInterval: 3000, distanceInterval: 5 },
+          (pos) => {
+            if (cancelled) return;
+            setLocation({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
+            setLoading(false);
+          },
+        );
       } catch (e) {
         if (!cancelled) setError('Failed to get your location. Please try again.');
-      } finally {
         if (!cancelled) setLoading(false);
       }
     }
 
-    fetchLocation();
+    startWatching();
 
     return () => {
       cancelled = true;
+      sub?.remove();
     };
   }, []);
 
