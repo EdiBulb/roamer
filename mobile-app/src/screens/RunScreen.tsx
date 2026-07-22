@@ -1,4 +1,4 @@
-import { Animated, KeyboardAvoidingView, Platform, PanResponder, ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, AppState, Animated, KeyboardAvoidingView, Platform, PanResponder, ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
@@ -10,7 +10,6 @@ import { useLocation } from '../hooks/useLocation';
 import { MapDisplay } from '../components/MapDisplay';
 import { RunningScreen } from '../components/RunningScreen';
 import { RunSummaryScreen } from '../components/RunSummaryScreen';
-import * as Location from 'expo-location';
 import { Area, Coordinate } from '../types';
 import { useSettings } from '../hooks/useSettings';
 import { useTutorial } from '../contexts/TutorialContext';
@@ -21,16 +20,14 @@ import { FollowMode } from '../components/MapDisplay';
 import { loadAreas, mergeAreas } from '../services/areaStorage';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback } from 'react';
-
-function segmentKm(a: Coordinate, b: Coordinate): number {
-  const R = 6371;
-  const dLat = ((b.latitude - a.latitude) * Math.PI) / 180;
-  const dLon = ((b.longitude - a.longitude) * Math.PI) / 180;
-  const lat1 = (a.latitude * Math.PI) / 180;
-  const lat2 = (b.latitude * Math.PI) / 180;
-  const x = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
-  return R * 2 * Math.asin(Math.sqrt(x));
-}
+import {
+  startBackgroundTracking,
+  pauseBackgroundTracking,
+  resumeBackgroundTracking,
+  stopBackgroundTracking,
+  readBgState,
+  clearBgState,
+} from '../services/bgTracking';
 
 function calcBearing(a: Coordinate, b: Coordinate): number {
   const lat1 = (a.latitude * Math.PI) / 180;
@@ -92,7 +89,6 @@ export function RunScreen() {
   const gpsTraceRef = useRef<Coordinate[]>([]);
   const [liveColoredIds, setLiveColoredIds] = useState<Set<string>>(new Set());
   const activeAreaRef = useRef<Area | null>(null);
-  const segmentHitCountRef = useRef<Map<string, number>>(new Map());
   useEffect(() => { activeAreaRef.current = activeArea; }, [activeArea]);
 
   // ── Slide-up panel animation ──
@@ -167,95 +163,93 @@ export function RunScreen() {
     return () => clearInterval(timer);
   }, [isRunning, isPaused]);
 
-  // ── GPS tracking: segment coloring + distance + bearing ──
+  // ── Poll AsyncStorage every 2 s to sync UI with background task state ──
+  // The background task runs in a separate JS context and cannot update React state
+  // directly, so it writes to AsyncStorage. We read it here on a 2-second interval.
   useEffect(() => {
     if (!isRunning) return;
-
-    let prevCoord: Coordinate | null = null;
-    let localCoveredM = 0;
-    let cancelled = false;
-    let sub: Location.LocationSubscription | null = null;
-
-    Location.watchPositionAsync(
-      { accuracy: Location.Accuracy.BestForNavigation, timeInterval: 2000, distanceInterval: 0 },
-      (pos) => {
-        if (isPausedRef.current || cancelled) return;
-
-        const coord: Coordinate = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
-        setSimulatedLocation(coord);
-        gpsTraceRef.current.push(coord);
-
-        // Color segments the user passes through
-        const area = activeAreaRef.current;
-        if (area && area.segments.length > 0) {
-          const THRESHOLD_KM = 0.010;
-          const MIN_HITS = 2;
-          const newlyColored: string[] = [];
-          for (const seg of area.segments) {
-            let hit = false;
-            for (const segCoord of seg.coordinates) {
-              if (segmentKm(coord, segCoord) <= THRESHOLD_KM) { hit = true; break; }
-            }
-            if (hit) {
-              const count = (segmentHitCountRef.current.get(seg.id) ?? 0) + 1;
-              segmentHitCountRef.current.set(seg.id, count);
-              if (count === MIN_HITS) newlyColored.push(seg.id);
-            }
-          }
-          if (newlyColored.length > 0) {
-            setLiveColoredIds((prev) => {
-              const next = new Set(prev);
-              newlyColored.forEach((id) => next.add(id));
-              return next;
-            });
-          }
-        }
-
-        // Update covered distance and map bearing
-        if (prevCoord) {
-          localCoveredM += segmentKm(prevCoord, coord) * 1000;
-          setCoveredKm(localCoveredM / 1000);
-          setBearing(calcBearing(prevCoord, coord));
-        }
-
-        prevCoord = coord;
+    const poll = setInterval(async () => {
+      const state = await readBgState();
+      const trace = state.gpsTrace;
+      if (trace.length > 0) {
+        setSimulatedLocation(trace[trace.length - 1]);
+        gpsTraceRef.current = trace;
       }
-    ).then((s) => {
-      if (cancelled) s.remove();
-      else sub = s;
-    });
-
-    return () => {
-      cancelled = true;
-      sub?.remove();
-    };
+      if (trace.length >= 2) {
+        setBearing(calcBearing(trace[trace.length - 2], trace[trace.length - 1]));
+      }
+      setLiveColoredIds(state.coloredIds);
+      setCoveredKm(state.coveredKm);
+    }, 2000);
+    return () => clearInterval(poll);
   }, [isRunning]);
 
-  function handleStartRun() {
+  // ── Sync elapsed time when app returns to foreground ──
+  // The setInterval timer stops ticking while the screen is off.
+  // When the user comes back we recalculate from the stored start timestamp.
+  useEffect(() => {
+    if (!isRunning) return;
+    const sub = AppState.addEventListener('change', async (state) => {
+      if (state === 'active') {
+        const bgState = await readBgState();
+        setElapsedSeconds(bgState.elapsedSeconds);
+      }
+    });
+    return () => sub.remove();
+  }, [isRunning]);
+
+  async function handleStartRun() {
+    const startCoord = location;
+    const area = activeAreaRef.current;
+
     setCoveredKm(0);
     setElapsedSeconds(0);
-    setSimulatedLocation(location);
+    setSimulatedLocation(startCoord);
     setIsPaused(false);
     slideY.setValue(0);
     setFollowMode('follow');
     cardSlideY.setValue(0);
-    gpsTraceRef.current = location ? [location] : [];
+    gpsTraceRef.current = startCoord ? [startCoord] : [];
     setGpsTrace([]);
     setLiveColoredIds(new Set());
-    segmentHitCountRef.current = new Map();
+
+    if (area && startCoord) {
+      try {
+        await startBackgroundTracking(area, startCoord);
+      } catch (e: any) {
+        // User denied background permission — run still starts but screen must stay on
+        if (e?.message === 'background-permission-denied') {
+          Alert.alert(
+            'Background location denied',
+            'Tracking will pause when the screen turns off. To fix this, go to Settings → Roamer → Location → Always.',
+            [{ text: 'OK' }],
+          );
+        }
+      }
+    }
+
     setIsRunning(true);
   }
 
-  function handlePause() {
+  async function handlePause() {
     setIsPaused(true);
+    await pauseBackgroundTracking();
   }
 
-  function handleResume() {
+  async function handleResume() {
     setIsPaused(false);
+    await resumeBackgroundTracking();
   }
 
-  function handleFinishRun() {
-    setGpsTrace([...gpsTraceRef.current]);
+  async function handleFinishRun() {
+    await stopBackgroundTracking();
+    // Read final state from AsyncStorage before clearing it
+    const state = await readBgState();
+    setGpsTrace(state.gpsTrace);
+    setCoveredKm(state.coveredKm);
+    setElapsedSeconds(state.elapsedSeconds);
+    setLiveColoredIds(state.coloredIds);
+    await clearBgState();
     setIsRunning(false);
     setIsPaused(false);
     setIsFinished(true);

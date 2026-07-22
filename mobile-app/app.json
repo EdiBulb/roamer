@@ -27,6 +27,12 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
+      ["expo-location", {
+        "locationAlwaysAndWhenInUsePermission": "Roamer needs your location to track your run, including in the background when your screen is off.",
+        "locationAlwaysUsageDescription": "Roamer tracks your run in the background so you don't have to keep your screen on.",
+        "isAndroidBackgroundLocationEnabled": true,
+        "isAndroidForegroundServiceEnabled": true
+      }],
       ["expo-media-library", {
         "photosPermission": "Allow Roamer to save share cards to your photo library.",
         "savePhotosPermission": "Allow Roamer to save share cards to your photo library."

@@ -1,4 +1,7 @@
 import * as Sentry from '@sentry/react-native';
+// This import must happen before any component mounts so that TaskManager.defineTask
+// runs at module load time and the background location task is registered with the OS.
+import './src/services/bgTracking';
 import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { SplashScreen } from './src/components/SplashScreen';
