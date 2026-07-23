@@ -10,7 +10,7 @@ export const LOCATION_TASK = 'roamer-location-task';
 // so AsyncStorage is the only safe cross-context communication channel.
 const K = {
   area:       '@roamer/bg_area',
-  hitCounts:  '@roamer/bg_hit_counts',
+  zoneHits:   '@roamer/bg_zone_hits',
   coloredIds: '@roamer/bg_colored_ids',
   gpsTrace:   '@roamer/bg_gps_trace',
   coveredM:   '@roamer/bg_covered_m',
@@ -35,9 +35,13 @@ function haversineKm(a: Coordinate, b: Coordinate): number {
   return R * 2 * Math.asin(Math.sqrt(x));
 }
 
+// Zone hit state per segment: f = front half touched, b = back half touched.
+// Both must be true before a segment is colored.
+type ZoneHit = { f: boolean; b: boolean };
+
 async function processLocationUpdate(coord: Coordinate): Promise<void> {
   const results = await AsyncStorage.multiGet([
-    K.area, K.hitCounts, K.coloredIds, K.gpsTrace,
+    K.area, K.zoneHits, K.coloredIds, K.gpsTrace,
     K.coveredM, K.lastCoord, K.isPaused,
   ]);
   const get = (key: string) => results.find(([k]) => k === key)?.[1] ?? null;
@@ -45,7 +49,7 @@ async function processLocationUpdate(coord: Coordinate): Promise<void> {
   if (get(K.isPaused) === 'true') return;
 
   const area: Area | null = get(K.area) ? JSON.parse(get(K.area)!) : null;
-  const hitCounts: Record<string, number> = get(K.hitCounts) ? JSON.parse(get(K.hitCounts)!) : {};
+  const zoneHits: Record<string, ZoneHit> = get(K.zoneHits) ? JSON.parse(get(K.zoneHits)!) : {};
   const coloredSet = new Set<string>(get(K.coloredIds) ? JSON.parse(get(K.coloredIds)!) : []);
   const gpsTrace: Coordinate[] = get(K.gpsTrace) ? JSON.parse(get(K.gpsTrace)!) : [];
   let coveredM = get(K.coveredM) ? parseFloat(get(K.coveredM)!) : 0;
@@ -53,17 +57,38 @@ async function processLocationUpdate(coord: Coordinate): Promise<void> {
 
   if (area?.segments.length) {
     const THRESHOLD_KM = 0.010;
-    const MIN_HITS = 2;
     for (const seg of area.segments) {
       if (coloredSet.has(seg.id)) continue;
-      let hit = false;
-      for (const c of seg.coordinates) {
-        if (haversineKm(coord, c) <= THRESHOLD_KM) { hit = true; break; }
+
+      const coords = seg.coordinates;
+
+      // Segments with ≤ 2 coords are too short to split meaningfully —
+      // a single proximity hit is enough to color them.
+      if (coords.length <= 2) {
+        for (const c of coords) {
+          if (haversineKm(coord, c) <= THRESHOLD_KM) { coloredSet.add(seg.id); break; }
+        }
+        continue;
       }
-      if (hit) {
-        hitCounts[seg.id] = (hitCounts[seg.id] ?? 0) + 1;
-        if (hitCounts[seg.id] >= MIN_HITS) coloredSet.add(seg.id);
+
+      // Split into front half and back half by coordinate index.
+      // Require at least one GPS hit in each half before coloring.
+      const mid = Math.floor(coords.length / 2);
+      const zones = zoneHits[seg.id] ?? { f: false, b: false };
+
+      if (!zones.f) {
+        for (let i = 0; i < mid; i++) {
+          if (haversineKm(coord, coords[i]) <= THRESHOLD_KM) { zones.f = true; break; }
+        }
       }
+      if (!zones.b) {
+        for (let i = mid; i < coords.length; i++) {
+          if (haversineKm(coord, coords[i]) <= THRESHOLD_KM) { zones.b = true; break; }
+        }
+      }
+
+      zoneHits[seg.id] = zones;
+      if (zones.f && zones.b) coloredSet.add(seg.id);
     }
   }
 
@@ -73,7 +98,7 @@ async function processLocationUpdate(coord: Coordinate): Promise<void> {
   if (gpsTrace.length > 2000) gpsTrace.splice(0, gpsTrace.length - 2000);
 
   await AsyncStorage.multiSet([
-    [K.hitCounts,  JSON.stringify(hitCounts)],
+    [K.zoneHits,   JSON.stringify(zoneHits)],
     [K.coloredIds, JSON.stringify([...coloredSet])],
     [K.gpsTrace,   JSON.stringify(gpsTrace)],
     [K.coveredM,   String(coveredM)],
@@ -100,7 +125,7 @@ TaskManager.defineTask(LOCATION_TASK, async ({ data, error }: TaskManager.TaskMa
 export async function startBackgroundTracking(area: Area, firstCoord: Coordinate): Promise<void> {
   await AsyncStorage.multiSet([
     [K.area,       JSON.stringify(area)],
-    [K.hitCounts,  '{}'],
+    [K.zoneHits,   '{}'],
     [K.coloredIds, '[]'],
     [K.gpsTrace,   JSON.stringify([firstCoord])],
     [K.coveredM,   '0'],
