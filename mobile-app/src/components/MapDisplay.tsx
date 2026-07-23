@@ -380,7 +380,7 @@ export function MapDisplay({
         }}
         onRegionIsChanging={(feature) => {
           setMapHeading(feature.properties?.heading ?? 0);
-          if (isRunning && feature.properties?.isUserInteraction) onUserDrag?.();
+          if (feature.properties?.isUserInteraction) onUserDrag?.();
           recalcArrowPos();
         }}
       >
@@ -389,7 +389,7 @@ export function MapDisplay({
               calls so user zoom/pan gestures are not overridden by prop updates. ── */}
         <MapboxGL.Camera
           ref={cameraRef}
-          {...(!isRunning
+          {...(!isRunning && followMode !== 'free'
             ? { centerCoordinate: center, zoomLevel: DEFAULT_ZOOM, animationMode: 'none' }
             : {}
           )}

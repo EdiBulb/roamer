@@ -39,7 +39,7 @@ function haversineKm(a: Coordinate, b: Coordinate): number {
 // Both must be true before a segment is colored.
 type ZoneHit = { f: boolean; b: boolean };
 
-async function processLocationUpdate(coord: Coordinate): Promise<void> {
+export async function processLocationUpdate(coord: Coordinate): Promise<void> {
   const results = await AsyncStorage.multiGet([
     K.area, K.zoneHits, K.coloredIds, K.gpsTrace,
     K.coveredM, K.lastCoord, K.isPaused,
@@ -122,7 +122,9 @@ TaskManager.defineTask(LOCATION_TASK, async ({ data, error }: TaskManager.TaskMa
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
-export async function startBackgroundTracking(area: Area, firstCoord: Coordinate): Promise<void> {
+// Returns true if the OS background task started successfully (screen-off tracking OK).
+// Returns false if startLocationUpdatesAsync failed — caller should fall back to watchPositionAsync.
+export async function startBackgroundTracking(area: Area, firstCoord: Coordinate): Promise<boolean> {
   await AsyncStorage.multiSet([
     [K.area,       JSON.stringify(area)],
     [K.zoneHits,   '{}'],
@@ -135,24 +137,29 @@ export async function startBackgroundTracking(area: Area, firstCoord: Coordinate
     [K.isPaused,   'false'],
   ]);
 
-  // Android 10+ / iOS 13+ require explicit background location permission
-  // (separate from foreground permission)
-  const { granted } = await Location.requestBackgroundPermissionsAsync();
-  if (!granted) throw new Error('background-permission-denied');
+  // Ask for background permission — "While using" is sufficient when combined with
+  // a foreground service notification (the OS treats it as a visible, user-aware service).
+  // We proceed regardless of the result; startLocationUpdatesAsync will succeed or fail on its own.
+  await Location.requestBackgroundPermissionsAsync().catch(() => {});
 
-  await Location.startLocationUpdatesAsync(LOCATION_TASK, {
-    accuracy: Location.Accuracy.BestForNavigation,
-    timeInterval: 2000,
-    distanceInterval: 0,
-    showsBackgroundLocationIndicator: true,
-    // Android requires a foreground service notification to keep the process alive.
-    // Without this the OS kills the task within seconds of the screen turning off.
-    foregroundService: {
-      notificationTitle: 'Roamer is tracking your run',
-      notificationBody: 'Tap to return to the app',
-      notificationColor: '#4CAF50',
-    },
-  });
+  try {
+    await Location.startLocationUpdatesAsync(LOCATION_TASK, {
+      accuracy: Location.Accuracy.BestForNavigation,
+      timeInterval: 2000,
+      distanceInterval: 0,
+      showsBackgroundLocationIndicator: true,
+      foregroundService: {
+        notificationTitle: 'Roamer is tracking your run',
+        notificationBody: 'Tap to return to the app',
+        notificationColor: '#4CAF50',
+      },
+    });
+    return true;
+  } catch {
+    // Device rejected background task (strict permission model). Caller will fall back
+    // to watchPositionAsync which keeps tracking while the screen is on.
+    return false;
+  }
 }
 
 export async function pauseBackgroundTracking(): Promise<void> {

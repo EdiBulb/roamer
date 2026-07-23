@@ -1,4 +1,4 @@
-import { Alert, AppState, Animated, KeyboardAvoidingView, Platform, PanResponder, ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { AppState, Animated, KeyboardAvoidingView, Platform, PanResponder, ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
@@ -20,6 +20,7 @@ import { FollowMode } from '../components/MapDisplay';
 import { loadAreas, mergeAreas } from '../services/areaStorage';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback } from 'react';
+import * as Location from 'expo-location';
 import {
   startBackgroundTracking,
   pauseBackgroundTracking,
@@ -27,6 +28,7 @@ import {
   stopBackgroundTracking,
   readBgState,
   clearBgState,
+  processLocationUpdate,
 } from '../services/bgTracking';
 
 function calcBearing(a: Coordinate, b: Coordinate): number {
@@ -90,6 +92,11 @@ export function RunScreen() {
   const [liveColoredIds, setLiveColoredIds] = useState<Set<string>>(new Set());
   const activeAreaRef = useRef<Area | null>(null);
   useEffect(() => { activeAreaRef.current = activeArea; }, [activeArea]);
+
+  // Fallback subscription when background task is unavailable (e.g. strict permission model).
+  // watchPositionAsync drives processLocationUpdate directly into AsyncStorage so the poll loop
+  // can pick it up exactly the same way as the background task.
+  const fallbackSubRef = useRef<Location.LocationSubscription | null>(null);
 
   // ── Slide-up panel animation ──
   const panelNaturalHeightRef = useRef(0);
@@ -214,17 +221,17 @@ export function RunScreen() {
     setLiveColoredIds(new Set());
 
     if (area && startCoord) {
-      try {
-        await startBackgroundTracking(area, startCoord);
-      } catch (e: any) {
-        // User denied background permission — run still starts but screen must stay on
-        if (e?.message === 'background-permission-denied') {
-          Alert.alert(
-            'Background location denied',
-            'Tracking will pause when the screen turns off. To fix this, go to Settings → Roamer → Location → Always.',
-            [{ text: 'OK' }],
-          );
-        }
+      const bgStarted = await startBackgroundTracking(area, startCoord);
+      if (!bgStarted) {
+        // Background task unavailable — fall back to watchPositionAsync.
+        // Each update writes to AsyncStorage via processLocationUpdate so the poll
+        // loop below picks it up identically to the background task path.
+        fallbackSubRef.current = await Location.watchPositionAsync(
+          { accuracy: Location.Accuracy.BestForNavigation, timeInterval: 2000, distanceInterval: 0 },
+          (pos) => {
+            processLocationUpdate({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
+          },
+        );
       }
     }
 
@@ -242,6 +249,8 @@ export function RunScreen() {
   }
 
   async function handleFinishRun() {
+    fallbackSubRef.current?.remove();
+    fallbackSubRef.current = null;
     await stopBackgroundTracking();
     // Read final state from AsyncStorage before clearing it
     const state = await readBgState();
@@ -261,6 +270,7 @@ export function RunScreen() {
     setCoveredKm(0);
     setElapsedSeconds(0);
     setBearing(0);
+    setFollowMode('follow');
   }
 
   if (isFinished && gpsTrace.length >= 1) {
