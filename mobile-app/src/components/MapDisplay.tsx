@@ -447,7 +447,7 @@ export function MapDisplay({
             <MapboxGL.ShapeSource id="area-uncolored" shape={areaSegmentGeoJSON.uncolored}>
               <MapboxGL.LineLayer
                 id="area-uncolored-line"
-                style={{ lineColor: '#E0E0E0', lineWidth: 3, lineJoin: 'round', lineCap: 'round', lineOpacity: 0.8 }}
+                style={{ lineColor: '#2C2C2C', lineWidth: 3, lineJoin: 'round', lineCap: 'round', lineOpacity: 0.55 }}
               />
             </MapboxGL.ShapeSource>
             <MapboxGL.ShapeSource id="area-existing" shape={areaSegmentGeoJSON.existing}>
@@ -611,7 +611,7 @@ export function MapDisplay({
         ))}
       </MapboxGL.MapView>
 
-      {/* ── route classification legend (bottom-right, idle only) ── */}
+      {/* ── route classification legend (run summary only) ── */}
       {!isRunning && routeClassification && (
         <View style={[styles.routeLegend, { bottom: legendBottom }]}>
           <View style={styles.routeLegendItem}>
@@ -630,6 +630,26 @@ export function MapDisplay({
             <View style={[styles.routeLegendDot, { backgroundColor: COLOR_OUTSIDE }]} />
             <Text style={styles.routeLegendText}>Outside area</Text>
           </View>
+        </View>
+      )}
+
+      {/* ── area segment legend (shown whenever active area is visible) ── */}
+      {areaSegmentGeoJSON && !routeClassification && (
+        <View style={[styles.routeLegend, { bottom: legendBottom }]}>
+          <View style={styles.routeLegendItem}>
+            <View style={[styles.routeLegendDot, { backgroundColor: '#2C2C2C' }]} />
+            <Text style={styles.routeLegendText}>Remaining</Text>
+          </View>
+          <View style={styles.routeLegendItem}>
+            <View style={[styles.routeLegendDot, { backgroundColor: '#4CAF50' }]} />
+            <Text style={styles.routeLegendText}>Explored</Text>
+          </View>
+          {isRunning && (
+            <View style={styles.routeLegendItem}>
+              <View style={[styles.routeLegendDot, { backgroundColor: COLOR_NEW }]} />
+              <Text style={styles.routeLegendText}>Today</Text>
+            </View>
+          )}
         </View>
       )}
 
