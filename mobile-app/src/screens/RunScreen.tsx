@@ -1,4 +1,4 @@
-import { AppState, Animated, KeyboardAvoidingView, Platform, PanResponder, ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, AppState, Animated, KeyboardAvoidingView, Linking, Platform, PanResponder, ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
@@ -206,6 +206,29 @@ export function RunScreen() {
   }, [isRunning]);
 
   async function handleStartRun() {
+    const { granted } = await Location.getBackgroundPermissionsAsync();
+    if (!granted) {
+      Alert.alert(
+        'Background location needed',
+        'To track your run when the screen is off, set location permission to "Allow all the time".\n\nSettings → Apps → Roamer → Permissions → Location → Allow all the time',
+        [
+          {
+            text: 'Open Settings',
+            onPress: () => Linking.openSettings(),
+          },
+          {
+            text: 'Start anyway',
+            style: 'cancel',
+            onPress: () => startRunCore(),
+          },
+        ],
+      );
+      return;
+    }
+    await startRunCore();
+  }
+
+  async function startRunCore() {
     const startCoord = location;
     const area = activeAreaRef.current;
 
@@ -227,7 +250,7 @@ export function RunScreen() {
         // Each update writes to AsyncStorage via processLocationUpdate so the poll
         // loop below picks it up identically to the background task path.
         fallbackSubRef.current = await Location.watchPositionAsync(
-          { accuracy: Location.Accuracy.BestForNavigation, timeInterval: 2000, distanceInterval: 0 },
+          { accuracy: Location.Accuracy.BestForNavigation, timeInterval: 2000, distanceInterval: 10 },
           (pos) => {
             processLocationUpdate({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
           },

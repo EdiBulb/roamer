@@ -137,16 +137,11 @@ export async function startBackgroundTracking(area: Area, firstCoord: Coordinate
     [K.isPaused,   'false'],
   ]);
 
-  // Ask for background permission — "While using" is sufficient when combined with
-  // a foreground service notification (the OS treats it as a visible, user-aware service).
-  // We proceed regardless of the result; startLocationUpdatesAsync will succeed or fail on its own.
-  await Location.requestBackgroundPermissionsAsync().catch(() => {});
-
   try {
     await Location.startLocationUpdatesAsync(LOCATION_TASK, {
       accuracy: Location.Accuracy.BestForNavigation,
       timeInterval: 2000,
-      distanceInterval: 0,
+      distanceInterval: 10,
       showsBackgroundLocationIndicator: true,
       foregroundService: {
         notificationTitle: 'Roamer is tracking your run',
