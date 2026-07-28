@@ -206,7 +206,14 @@ export function RunScreen() {
   }, [isRunning]);
 
   async function handleStartRun() {
-    const { granted } = await Location.getBackgroundPermissionsAsync();
+    let granted = false;
+    try {
+      const result = await Location.getBackgroundPermissionsAsync();
+      granted = result.granted;
+    } catch {
+      // Permission not declared in manifest — treat as not granted
+      granted = false;
+    }
     if (!granted) {
       Alert.alert(
         'Background location needed',
