@@ -23,12 +23,22 @@ module.exports = {
       },
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
+      permissions: [
+        'android.permission.ACCESS_BACKGROUND_LOCATION',
+        'android.permission.FOREGROUND_SERVICE',
+        'android.permission.FOREGROUND_SERVICE_LOCATION',
+      ],
     },
     web: {
       favicon: './assets/favicon.png',
     },
     plugins: [
       '@rnmapbox/maps',
+      ['expo-location', {
+        locationAlwaysAndWhenInUsePermission: 'Roamer needs your location to track your run, including in the background when your screen is off.',
+        isAndroidBackgroundLocationEnabled: true,
+        isAndroidForegroundServiceEnabled: true,
+      }],
     ],
     extra: {
       eas: {
