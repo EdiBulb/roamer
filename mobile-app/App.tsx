@@ -7,6 +7,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { SplashScreen } from './src/components/SplashScreen';
 import { OnboardingScreen } from './src/screens/OnboardingScreen';
 import { useState, useEffect } from 'react';
+import { PermissionsAndroid, Platform } from 'react-native';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -23,10 +24,17 @@ export default function App() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    AsyncStorage.getItem(ONBOARDING_KEY).then((onboarding) => {
+    async function init() {
+      // Android 13+ requires POST_NOTIFICATIONS runtime permission for foreground service
+      // notifications. Request it early so the user sees the prompt before starting a run.
+      if (Platform.OS === 'android' && Platform.Version >= 33) {
+        await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
+      }
+      const onboarding = await AsyncStorage.getItem(ONBOARDING_KEY);
       if (!onboarding) setShowOnboarding(true);
       setReady(true);
-    });
+    }
+    init();
   }, []);
 
   async function handleOnboardingFinish() {

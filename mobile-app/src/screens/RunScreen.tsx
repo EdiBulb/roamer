@@ -20,6 +20,9 @@ import { FollowMode } from '../components/MapDisplay';
 import { loadAreas, mergeAreas } from '../services/areaStorage';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback } from 'react';
+import AsyncStorageLib from '@react-native-async-storage/async-storage';
+
+const BATTERY_OPT_KEY = '@roamer/battery_opt_shown';
 import * as Location from 'expo-location';
 import {
   startBackgroundTracking,
@@ -236,6 +239,18 @@ export function RunScreen() {
   }
 
   async function startRunCore() {
+    // Show battery optimization tip once — Samsung kills background services unless
+    // the user sets the app to "Unrestricted" battery usage.
+    const batteryShown = await AsyncStorageLib.getItem(BATTERY_OPT_KEY);
+    if (!batteryShown) {
+      await AsyncStorageLib.setItem(BATTERY_OPT_KEY, 'true');
+      Alert.alert(
+        'For best tracking',
+        'To prevent Roamer from being stopped when your screen is off, go to:\n\nSettings → Battery → Background usage limits → Roamer → Unrestricted',
+        [{ text: 'Got it' }],
+      );
+    }
+
     const startCoord = location;
     const area = activeAreaRef.current;
 
