@@ -168,6 +168,11 @@ export function CreateAreaModal({ visible, location, existingAreas, onClose, onC
     }
   }
 
+  async function handleRetry() {
+    setFetchStatus('idle');
+    await handleCreate();
+  }
+
   // GeoJSON for existing areas overlay
   const existingAreasGeoJSON: GeoJSON.FeatureCollection = {
     type: 'FeatureCollection',
@@ -357,10 +362,6 @@ export function CreateAreaModal({ visible, location, existingAreas, onClose, onC
               returnKeyType="done"
             />
 
-            {fetchStatus === 'error' && (
-              <Text style={styles.errorText}>Failed to fetch road data. Check your connection.</Text>
-            )}
-
             {fetchStatus === 'loading' && (
               <Text style={styles.loadingHint}>Fetching streets inside your area...</Text>
             )}
@@ -383,6 +384,33 @@ export function CreateAreaModal({ visible, location, existingAreas, onClose, onC
             </View>
           </View>
         </KeyboardAvoidingView>
+      )}
+
+      {/* ── Error overlay (retry) ── */}
+      {fetchStatus === 'error' && (
+        <View style={styles.loadingOverlay}>
+          <Text style={styles.errorIcon}>⚠️</Text>
+          <Text style={styles.loadingTitle}>Couldn't fetch streets</Text>
+          <Text style={styles.loadingSubtitle}>
+            {'The map data server didn\'t respond.\nThis is usually temporary — try again.'}
+          </Text>
+          <View style={styles.retryButtons}>
+            <TouchableOpacity
+              style={styles.retryBackBtn}
+              onPress={() => { setFetchStatus('idle'); setStep('draw'); }}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.retryBackText}>← Back</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.retryBtn}
+              onPress={handleRetry}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.retryText}>Try Again</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       )}
 
       {/* ── Loading overlay (radar scan) ── */}
@@ -625,4 +653,23 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     backgroundColor: '#4CAF50',
   },
+  // Error overlay
+  errorIcon: { fontSize: 52, marginBottom: 8 },
+  retryButtons: { flexDirection: 'row', gap: 12, marginTop: 28 },
+  retryBackBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 14,
+    backgroundColor: '#F5F5F5',
+    alignItems: 'center',
+  },
+  retryBackText: { fontSize: 15, fontWeight: '600', color: '#555' },
+  retryBtn: {
+    flex: 2,
+    paddingVertical: 14,
+    borderRadius: 14,
+    backgroundColor: '#4CAF50',
+    alignItems: 'center',
+  },
+  retryText: { fontSize: 15, fontWeight: '700', color: '#fff' },
 });

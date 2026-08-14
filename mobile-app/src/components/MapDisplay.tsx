@@ -133,6 +133,7 @@ export function MapDisplay({
   const [compassHeading, setCompassHeading] = useState(0);
   const [mapHeading, setMapHeading] = useState(0);
   const [arrowPos, setArrowPos] = useState<{ x: number; y: number } | null>(null);
+  const [flagPositions, setFlagPositions] = useState<{ id: string; x: number; y: number }[]>([]);
   const pulseAnim = useRef(new Animated.Value(0)).current;
   const hasSetInitialZoomRef = useRef(false);
 
@@ -141,6 +142,17 @@ export function MapDisplay({
     try {
       const pos = await (mapRef.current as any).getPointInView([location.longitude, location.latitude]);
       setArrowPos({ x: pos[0], y: pos[1] });
+    } catch {}
+    const conquered = areas.filter(a => a.conquered);
+    if (conquered.length === 0) return;
+    try {
+      const positions = await Promise.all(
+        conquered.map(async (a) => {
+          const p = await (mapRef.current as any).getPointInView([a.center.longitude, a.center.latitude]);
+          return { id: a.id, x: p[0], y: p[1] };
+        })
+      );
+      setFlagPositions(positions);
     } catch {}
   }
 
@@ -597,19 +609,18 @@ export function MapDisplay({
           </MapboxGL.PointAnnotation>
         )}
 
-        {/* ── conquered area flags ── */}
-        {areas.filter(a => a.conquered).map(a => (
-          <MapboxGL.PointAnnotation
-            key={`flag-${a.id}`}
-            id={`flag-${a.id}`}
-            coordinate={[a.center.longitude, a.center.latitude]}
-          >
-            <View style={styles.flagMarker}>
-              <Text style={styles.flagMarkerText}>🚩</Text>
-            </View>
-          </MapboxGL.PointAnnotation>
-        ))}
       </MapboxGL.MapView>
+
+      {/* ── conquered area flags (rendered as RN views above GL surface) ── */}
+      {flagPositions.map(fp => (
+        <View
+          key={`flag-overlay-${fp.id}`}
+          pointerEvents="none"
+          style={[styles.flagMarker, { position: 'absolute', left: fp.x - 22, top: fp.y - 44 }]}
+        >
+          <Text style={styles.flagMarkerText}>🚩</Text>
+        </View>
+      ))}
 
       {/* ── route classification legend (run summary only) ── */}
       {!isRunning && routeClassification && (
@@ -703,7 +714,7 @@ export function MapDisplay({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, width: '100%' },
+  container: { flex: 1, width: '100%', position: 'relative' },
   map: { flex: 1 },
 
   destinationOuter: {
@@ -775,8 +786,20 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#fff',
   },
-  flagMarker: { alignItems: 'center', justifyContent: 'center' },
-  flagMarkerText: { fontSize: 28 },
+  flagMarker: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 8,
+  },
+  flagMarkerText: { fontSize: 26 },
   routeLegend: {
     position: 'absolute',
     bottom: 16,

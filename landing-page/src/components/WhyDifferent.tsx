@@ -10,13 +10,13 @@ export function WhyDifferent() {
   const { t } = useLocale();
 
   return (
-    <section ref={ref} className="py-32 px-6 bg-[#0a0a0a]">
+    <section ref={ref} className="py-32 px-6 bg-[#FAF8FF]">
       <div className="max-w-4xl mx-auto">
         <motion.p
           initial={{ opacity: 0, y: 20 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6 }}
-          className="text-green-400 text-sm font-semibold tracking-widest uppercase mb-6"
+          className="text-violet-600 text-sm font-semibold tracking-widest uppercase mb-6"
         >
           {t.whyDifferent.label}
         </motion.p>
@@ -25,7 +25,7 @@ export function WhyDifferent() {
           initial={{ opacity: 0, y: 24 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.7, delay: 0.1 }}
-          className="text-4xl sm:text-5xl font-black tracking-tight text-stone-50 mb-16 leading-tight"
+          className="text-4xl sm:text-5xl font-black tracking-tight text-stone-900 mb-16 leading-tight"
         >
           {t.whyDifferent.heading}
         </motion.h2>
@@ -36,15 +36,15 @@ export function WhyDifferent() {
             initial={{ opacity: 0, x: -16 }}
             animate={inView ? { opacity: 1, x: 0 } : {}}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="bg-[#141414] border border-[#2a2a2a] rounded-2xl p-8"
+            className="bg-white border border-stone-200 rounded-2xl p-8"
           >
-            <h3 className="text-stone-500 font-semibold text-sm tracking-widest uppercase mb-6">
+            <h3 className="text-stone-400 font-semibold text-sm tracking-widest uppercase mb-6">
               {t.whyDifferent.traditionalLabel}
             </h3>
             <ul className="space-y-3">
               {t.whyDifferent.traditional.map((item, i) => (
-                <li key={i} className="flex items-center gap-3 text-stone-500">
-                  <span className="text-stone-700">✕</span>
+                <li key={i} className="flex items-center gap-3 text-stone-400">
+                  <span className="text-stone-300">✕</span>
                   {item}
                 </li>
               ))}
@@ -56,15 +56,15 @@ export function WhyDifferent() {
             initial={{ opacity: 0, x: 16 }}
             animate={inView ? { opacity: 1, x: 0 } : {}}
             transition={{ duration: 0.6, delay: 0.3 }}
-            className="bg-green-400/5 border border-green-400/20 rounded-2xl p-8"
+            className="bg-violet-50 border border-violet-200 rounded-2xl p-8"
           >
-            <h3 className="text-green-400 font-semibold text-sm tracking-widest uppercase mb-6">
+            <h3 className="text-violet-600 font-semibold text-sm tracking-widest uppercase mb-6">
               {t.whyDifferent.roamerLabel}
             </h3>
             <ul className="space-y-3">
               {t.whyDifferent.roamer.map((item, i) => (
-                <li key={i} className="flex items-center gap-3 text-stone-100">
-                  <span className="text-green-400">✓</span>
+                <li key={i} className="flex items-center gap-3 text-stone-800">
+                  <span className="text-violet-500">✓</span>
                   {item}
                 </li>
               ))}
@@ -77,13 +77,13 @@ export function WhyDifferent() {
           initial={{ opacity: 0, y: 16 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6, delay: 0.4 }}
-          className="bg-[#141414] border border-[#2a2a2a] rounded-2xl p-6 flex flex-col sm:flex-row items-start sm:items-center gap-4"
+          className="bg-white border border-stone-200 rounded-2xl p-6 flex flex-col sm:flex-row items-start sm:items-center gap-4"
         >
-          <div className="w-10 h-10 rounded-full bg-stone-800 flex items-center justify-center shrink-0 text-lg">
+          <div className="w-10 h-10 rounded-full bg-stone-100 flex items-center justify-center shrink-0 text-lg">
             🔒
           </div>
           <div>
-            <p className="text-stone-100 font-semibold mb-1">{t.whyDifferent.privacyTitle}</p>
+            <p className="text-stone-900 font-semibold mb-1">{t.whyDifferent.privacyTitle}</p>
             <p className="text-stone-500 text-sm">{t.whyDifferent.privacyDesc}</p>
           </div>
         </motion.div>

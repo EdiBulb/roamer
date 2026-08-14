@@ -5,10 +5,10 @@ import { useRef } from "react";
 import { useLocale } from "@/context/LocaleContext";
 
 const videos = [
-  "/videos/route-generation.mp4",
-  "/videos/navigation.mp4",
-  "/videos/street-discovery.mp4",
-  "/videos/trail.mp4",
+  "/videos/create-area.mp4",
+  "/videos/color-streets.mp4",
+  "/videos/conquer-area.mp4",
+  "/videos/merge-area.mp4",
 ];
 
 export function Screenshots() {
@@ -17,13 +17,13 @@ export function Screenshots() {
   const { t } = useLocale();
 
   return (
-    <section ref={ref} className="py-32 px-6 bg-[#0d0d0d] overflow-hidden">
+    <section ref={ref} className="py-32 px-6 bg-white overflow-hidden">
       <div className="max-w-5xl mx-auto">
         <motion.p
           initial={{ opacity: 0, y: 20 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6 }}
-          className="text-green-400 text-sm font-semibold tracking-widest uppercase mb-6"
+          className="text-violet-600 text-sm font-semibold tracking-widest uppercase mb-6"
         >
           {t.screenshots.label}
         </motion.p>
@@ -32,7 +32,7 @@ export function Screenshots() {
           initial={{ opacity: 0, y: 24 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.7, delay: 0.1 }}
-          className="text-4xl sm:text-5xl font-black tracking-tight text-stone-50 mb-16 leading-tight"
+          className="text-4xl sm:text-5xl font-black tracking-tight text-stone-900 mb-16 leading-tight"
         >
           {t.screenshots.heading}
         </motion.h2>
@@ -48,7 +48,7 @@ export function Screenshots() {
             >
               {/* Phone frame */}
               <div className="relative mx-auto w-full max-w-[160px]">
-                <div className="bg-[#1a1a1a] border border-[#333] rounded-[32px] p-2 shadow-2xl">
+                <div className="bg-stone-100 border border-stone-200 rounded-[32px] p-2 shadow-md">
                   <video
                     src={videos[i]}
                     autoPlay
@@ -59,7 +59,7 @@ export function Screenshots() {
                   />
                 </div>
                 {/* Notch */}
-                <div className="absolute top-4 left-1/2 -translate-x-1/2 w-12 h-1.5 bg-[#0a0a0a] rounded-full" />
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 w-12 h-1.5 bg-white rounded-full" />
               </div>
               <p className="text-center text-stone-500 text-xs font-medium">{label}</p>
             </motion.div>

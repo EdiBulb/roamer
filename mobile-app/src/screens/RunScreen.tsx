@@ -18,6 +18,8 @@ import { CreateAreaModal } from '../components/CreateAreaModal';
 import { MyAreasSheet } from '../components/MyAreasSheet';
 import { FollowMode } from '../components/MapDisplay';
 import { loadAreas, mergeAreas } from '../services/areaStorage';
+import { isPointInPolygon } from '../services/overpassApi';
+import * as Speech from 'expo-speech';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback } from 'react';
 import AsyncStorageLib from '@react-native-async-storage/async-storage';
@@ -100,6 +102,10 @@ export function RunScreen() {
   // watchPositionAsync drives processLocationUpdate directly into AsyncStorage so the poll loop
   // can pick it up exactly the same way as the background task.
   const fallbackSubRef = useRef<Location.LocationSubscription | null>(null);
+
+  // Area boundary tracking — alert user when they step outside the active area polygon.
+  const wasInsideAreaRef = useRef<boolean | null>(null);
+  const lastBoundaryAlertRef = useRef<number>(0);
 
   // ── Slide-up panel animation ──
   const panelNaturalHeightRef = useRef(0);
@@ -190,6 +196,26 @@ export function RunScreen() {
       }
       setLiveColoredIds(state.coloredIds);
       setCoveredKm(state.coveredKm);
+
+      // ── Area boundary check ──
+      const area = activeAreaRef.current;
+      const lastPos = trace.length > 0 ? trace[trace.length - 1] : null;
+      if (area?.polygon && area.polygon.length >= 3 && lastPos) {
+        const inside = isPointInPolygon(lastPos, area.polygon);
+        const prev = wasInsideAreaRef.current;
+        wasInsideAreaRef.current = inside;
+
+        const now = Date.now();
+        const ALERT_COOLDOWN_MS = 30_000;
+        if (prev !== null && prev !== inside && now - lastBoundaryAlertRef.current > ALERT_COOLDOWN_MS) {
+          lastBoundaryAlertRef.current = now;
+          if (!inside) {
+            Speech.speak("You've left your area", { language: 'en', rate: 0.9 });
+          } else {
+            Speech.speak("Back in your area", { language: 'en', rate: 0.9 });
+          }
+        }
+      }
     }, 2000);
     return () => clearInterval(poll);
   }, [isRunning]);
@@ -296,6 +322,8 @@ export function RunScreen() {
   async function handleFinishRun() {
     fallbackSubRef.current?.remove();
     fallbackSubRef.current = null;
+    wasInsideAreaRef.current = null;
+    lastBoundaryAlertRef.current = 0;
     await stopBackgroundTracking();
     // Read final state from AsyncStorage before clearing it
     const state = await readBgState();
@@ -443,6 +471,7 @@ export function RunScreen() {
             setShowCreateArea(false);
           }}
         />
+
       </View>
 
       {/* Running panel — slides up from bottom during run */}

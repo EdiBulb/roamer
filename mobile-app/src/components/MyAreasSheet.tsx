@@ -45,6 +45,7 @@ export function MyAreasSheet({ visible, areas, activeAreaId, onSelect, onCreateN
   const [mergeNameModal, setMergeNameModal] = useState(false);
   const [mergeName, setMergeName] = useState('');
   const [merging, setMerging] = useState(false);
+  const [mergeFailed, setMergeFailed] = useState(false);
 
   const conqueredAreas = areas.filter(a => {
     const pct = (a.coloredSegmentIds.length / Math.max(a.segments.length, 1)) * 100;
@@ -87,6 +88,8 @@ export function MyAreasSheet({ visible, areas, activeAreaId, onSelect, onCreateN
       setMergeNameModal(false);
       setMergeMode(false);
       setSelectedForMerge([]);
+    } catch {
+      setMergeFailed(true);
     } finally {
       setMerging(false);
     }
@@ -287,6 +290,43 @@ export function MyAreasSheet({ visible, areas, activeAreaId, onSelect, onCreateN
         />
       </Modal>
 
+      {/* Merge failed modal */}
+      <Modal visible={mergeFailed} transparent animationType="fade" onRequestClose={() => setMergeFailed(false)}>
+        <View style={styles.renameOverlay}>
+          <View style={styles.renameCard}>
+            <Text style={styles.mergeFailIcon}>⚠️</Text>
+            <Text style={styles.renameTitle}>Merge failed</Text>
+            <Text style={styles.mergeFailBody}>
+              Couldn't fetch street data for the merged area.{'\n'}Check your connection and try again.
+            </Text>
+            <View style={styles.renameButtons}>
+              <TouchableOpacity
+                style={styles.renameCancelBtn}
+                onPress={() => {
+                  setMergeFailed(false);
+                  setMergeNameModal(false);
+                  setSelectedForMerge([]);
+                  setMergeMode(false);
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.renameCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.renameSaveBtn}
+                onPress={() => {
+                  setMergeFailed(false);
+                  handleConfirmMerge();
+                }}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.renameSaveText}>Try Again</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* Rename / Delete modal */}
       <Modal visible={!!editingArea} transparent animationType="fade" onRequestClose={() => setEditingArea(null)}>
         <View style={styles.renameOverlay}>
@@ -353,6 +393,8 @@ const styles = StyleSheet.create({
   mergeHint: { fontSize: 12, color: '#888', marginBottom: 8, textAlign: 'center' },
   mergeError: { fontSize: 12, color: '#E53935', marginBottom: 6, textAlign: 'center' },
   mergeModalSub: { fontSize: 13, color: '#888', marginTop: -8 },
+  mergeFailIcon: { fontSize: 36, textAlign: 'center', marginBottom: 8 },
+  mergeFailBody: { fontSize: 14, color: '#666', textAlign: 'center', lineHeight: 20, marginTop: 6, marginBottom: 8 },
   list: { maxHeight: 340 },
   empty: { fontSize: 14, color: '#BDBDBD', textAlign: 'center', paddingVertical: 24 },
   hint: { fontSize: 11, color: '#BDBDBD', textAlign: 'center', marginTop: 8, marginBottom: 4 },

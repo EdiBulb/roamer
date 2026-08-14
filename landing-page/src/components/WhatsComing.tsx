@@ -12,13 +12,13 @@ export function WhatsComing() {
   const { t } = useLocale();
 
   return (
-    <section ref={ref} className="py-32 px-6 bg-[#0a0a0a]">
+    <section ref={ref} className="py-32 px-6 bg-[#FAF8FF]">
       <div className="max-w-4xl mx-auto">
         <motion.p
           initial={{ opacity: 0, y: 20 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6 }}
-          className="text-green-400 text-sm font-semibold tracking-widest uppercase mb-6"
+          className="text-violet-600 text-sm font-semibold tracking-widest uppercase mb-6"
         >
           {t.whatsComing.label}
         </motion.p>
@@ -27,7 +27,7 @@ export function WhatsComing() {
           initial={{ opacity: 0, y: 24 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.7, delay: 0.1 }}
-          className="text-4xl sm:text-5xl font-black tracking-tight text-stone-50 mb-4 leading-tight"
+          className="text-4xl sm:text-5xl font-black tracking-tight text-stone-900 mb-4 leading-tight"
         >
           {t.whatsComing.heading}
         </motion.h2>
@@ -36,7 +36,7 @@ export function WhatsComing() {
           initial={{ opacity: 0, y: 16 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6, delay: 0.2 }}
-          className="text-stone-400 text-lg mb-16"
+          className="text-stone-500 text-lg mb-16"
         >
           {t.whatsComing.subtitle}
         </motion.p>
@@ -48,11 +48,11 @@ export function WhatsComing() {
               initial={{ opacity: 0, y: 24 }}
               animate={inView ? { opacity: 1, y: 0 } : {}}
               transition={{ duration: 0.5, delay: 0.3 + i * 0.1 }}
-              className="bg-[#141414] border border-[#2a2a2a] rounded-2xl p-6 flex gap-4 items-start"
+              className="bg-white border border-violet-100 rounded-2xl p-6 flex gap-4 items-start"
             >
               <span className="text-2xl shrink-0">{icons[i]}</span>
               <div>
-                <h3 className="text-stone-100 font-semibold mb-1">{f.title}</h3>
+                <h3 className="text-stone-900 font-semibold mb-1">{f.title}</h3>
                 <p className="text-stone-500 text-sm leading-relaxed">{f.desc}</p>
               </div>
             </motion.div>

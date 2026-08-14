@@ -4,8 +4,8 @@ import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
 import { useLocale } from "@/context/LocaleContext";
 
-const values = ["7", "124", "🏅", "68%"];
-const colors = ["text-green-400", "text-green-400", "text-yellow-400", "text-blue-400"];
+const values = ["7", "124", "🏅", "83"];
+const colors = ["text-violet-600", "text-violet-600", "text-yellow-500", "text-blue-500"];
 
 export function StatsShowcase() {
   const ref = useRef(null);
@@ -13,7 +13,7 @@ export function StatsShowcase() {
   const { t } = useLocale();
 
   return (
-    <section ref={ref} className="py-24 px-6 bg-[#0d0d0d]">
+    <section ref={ref} className="py-24 px-6 bg-[#FAF8FF]">
       <div className="max-w-5xl mx-auto">
         <motion.p
           initial={{ opacity: 0, y: 16 }}
@@ -31,11 +31,11 @@ export function StatsShowcase() {
               initial={{ opacity: 0, y: 24 }}
               animate={inView ? { opacity: 1, y: 0 } : {}}
               transition={{ duration: 0.5, delay: i * 0.1 }}
-              className="bg-[#141414] border border-[#2a2a2a] rounded-2xl p-6 flex flex-col gap-2"
+              className="bg-white border border-violet-100 rounded-2xl p-6 flex flex-col gap-2"
             >
               <span className={`text-4xl font-black ${colors[i]}`}>{values[i]}</span>
-              <span className="text-stone-100 font-semibold text-sm leading-snug">{stat.label}</span>
-              <span className="text-stone-600 text-xs">{stat.sub}</span>
+              <span className="text-stone-800 font-semibold text-sm leading-snug">{stat.label}</span>
+              <span className="text-stone-400 text-xs">{stat.sub}</span>
             </motion.div>
           ))}
         </div>

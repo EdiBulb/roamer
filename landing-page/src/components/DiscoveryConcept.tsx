@@ -10,13 +10,13 @@ export function DiscoveryConcept() {
   const { t } = useLocale();
 
   return (
-    <section ref={ref} className="py-32 px-6 bg-[#0a0a0a]">
+    <section ref={ref} className="py-32 px-6 bg-white">
       <div className="max-w-4xl mx-auto">
         <motion.p
           initial={{ opacity: 0, y: 20 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6 }}
-          className="text-green-400 text-sm font-semibold tracking-widest uppercase mb-6"
+          className="text-violet-600 text-sm font-semibold tracking-widest uppercase mb-6"
         >
           {t.discoveryConcept.label}
         </motion.p>
@@ -25,7 +25,7 @@ export function DiscoveryConcept() {
           initial={{ opacity: 0, y: 24 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.7, delay: 0.1 }}
-          className="text-4xl sm:text-5xl font-black tracking-tight text-stone-50 mb-8 leading-tight"
+          className="text-4xl sm:text-5xl font-black tracking-tight text-stone-900 mb-8 leading-tight"
         >
           {t.discoveryConcept.heading}
         </motion.h2>
@@ -34,23 +34,22 @@ export function DiscoveryConcept() {
           initial={{ opacity: 0, y: 16 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6, delay: 0.2 }}
-          className="text-xl text-stone-400 mb-16 max-w-2xl leading-relaxed"
+          className="text-xl text-stone-500 mb-16 max-w-2xl leading-relaxed"
         >
           {t.discoveryConcept.subtitle}
         </motion.p>
 
-        {/* The reframe */}
         <div className="grid md:grid-cols-2 gap-6">
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={inView ? { opacity: 1, x: 0 } : {}}
             transition={{ duration: 0.6, delay: 0.3 }}
-            className="bg-[#141414] border border-[#2a2a2a] rounded-2xl p-8"
+            className="bg-[#FAF8FF] border border-violet-100 rounded-2xl p-8"
           >
-            <p className="text-stone-500 text-sm font-semibold tracking-widest uppercase mb-4">
+            <p className="text-stone-400 text-sm font-semibold tracking-widest uppercase mb-4">
               {t.discoveryConcept.otherLabel}
             </p>
-            <p className="text-3xl font-black text-stone-400 line-through decoration-stone-600">
+            <p className="text-3xl font-black text-stone-300 line-through decoration-stone-300">
               {t.discoveryConcept.otherQuestion}
             </p>
           </motion.div>
@@ -59,12 +58,12 @@ export function DiscoveryConcept() {
             initial={{ opacity: 0, x: 20 }}
             animate={inView ? { opacity: 1, x: 0 } : {}}
             transition={{ duration: 0.6, delay: 0.4 }}
-            className="bg-green-400/5 border border-green-400/20 rounded-2xl p-8"
+            className="bg-violet-50 border border-violet-200 rounded-2xl p-8"
           >
-            <p className="text-green-400 text-sm font-semibold tracking-widest uppercase mb-4">
+            <p className="text-violet-600 text-sm font-semibold tracking-widest uppercase mb-4">
               {t.discoveryConcept.roamerLabel}
             </p>
-            <p className="text-3xl font-black text-stone-50">
+            <p className="text-3xl font-black text-stone-900">
               {t.discoveryConcept.roamerQuestion}
             </p>
           </motion.div>

@@ -5,6 +5,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useRunHistory } from '../hooks/useRunHistory';
 import { getTotalColoredSegmentCount } from '../services/areaStorage';
 import { BADGES } from '../services/badges';
+import { SettingsModal } from '../components/SettingsModal';
+import { useSettings } from '../hooks/useSettings';
 
 const STAMP_IMG = require('../../assets/icons/icon-stamp.png');
 
@@ -81,7 +83,9 @@ function formatTotalTime(seconds: number): string {
 
 export function CalendarScreen() {
   const { history, refresh } = useRunHistory();
+  const { settings, update: updateSettings } = useSettings();
   const [badgeModalVisible, setBadgeModalVisible] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [totalStreets, setTotalStreets] = useState(0);
 
   useFocusEffect(useCallback(() => {
@@ -145,6 +149,9 @@ export function CalendarScreen() {
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <Text style={styles.title}>Trail</Text>
+          <TouchableOpacity style={styles.gearBtn} onPress={() => setShowSettings(true)} activeOpacity={0.7}>
+            <Text style={styles.gearBtnText}>⚙️</Text>
+          </TouchableOpacity>
         </View>
         <Text style={styles.subtitle}>Your running habit</Text>
       </View>
@@ -221,6 +228,13 @@ export function CalendarScreen() {
         </TouchableOpacity>
       </View>
 
+      <SettingsModal
+        visible={showSettings}
+        settings={settings}
+        onUpdate={updateSettings}
+        onClose={() => setShowSettings(false)}
+      />
+
       {/* Badge modal */}
       <Modal visible={badgeModalVisible} transparent animationType="fade" onRequestClose={() => setBadgeModalVisible(false)}>
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setBadgeModalVisible(false)}>
@@ -266,9 +280,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  gearBtn: {},
-  gearBtnText: { fontSize: 20 },
-  gearBtnIcon: {},
+  gearBtn: { padding: 4 },
+  gearBtnText: { fontSize: 22 },
   title: { fontSize: 28, fontWeight: '800', color: '#1A1A1A' },
   subtitle: { fontSize: 14, color: '#BDBDBD', marginTop: 4 },
   section: {

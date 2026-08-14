@@ -141,6 +141,7 @@ export async function setAreaConquered(areaId: string): Promise<void> {
   await AsyncStorage.setItem(AREAS_KEY, JSON.stringify(updated));
 }
 
+
 export async function getTotalColoredSegmentCount(): Promise<number> {
   const areas = await loadAreas();
   const allIds = new Set<string>();

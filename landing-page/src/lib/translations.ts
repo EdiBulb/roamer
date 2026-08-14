@@ -30,22 +30,22 @@ export const translations = {
     },
     howItWorks: {
       label: 'How It Works',
-      heading: 'Three steps to your next adventure.',
+      heading: 'Three steps to own your city.',
       steps: [
         {
-          title: 'Generate',
+          title: 'Create',
           description:
-            'Choose a distance and generate a unique random route — a new path every time.',
+            'Draw your area on the map — pick any neighborhood or district you want to conquer.',
         },
         {
           title: 'Explore',
           description:
-            "Follow voice-guided navigation through unfamiliar streets you've never run before.",
+            'Run the streets inside your area and watch them light up on the map as you go.',
         },
         {
-          title: 'Discover',
+          title: 'Conquer',
           description:
-            'Unlock new streets, earn badges, and build your personal exploration map of the city.',
+            'Color 80% of your streets to plant your flag — then merge areas to grow your territory.',
         },
       ],
       cta: 'Get Early Access',
@@ -65,7 +65,7 @@ export const translations = {
       label: 'The Concept',
       heading: 'Every run uncovers something new.',
       subtitle:
-        "Roamer generates unique routes and tracks the streets you've never explored before.",
+        "Set your area, run its streets, and watch your map light up — every road you cover gets permanently colored in.",
       otherLabel: 'Other apps ask',
       otherQuestion: 'How fast did you run?',
       roamerLabel: 'Roamer asks',
@@ -83,7 +83,7 @@ export const translations = {
     screenshots: {
       label: 'The App',
       heading: 'Built for the streets.',
-      screens: ['Route Generation', 'Navigation', 'Street Discovery', 'Trail'],
+      screens: ['Create Your Area', 'Color Your Streets', 'Conquer Your Area', 'Merge Your Area'],
     },
     whatsComing: {
       label: "What's Coming",
@@ -169,22 +169,22 @@ export const translations = {
     },
     howItWorks: {
       label: 'How It Works',
-      heading: '세 단계로 시작하는 새로운 모험.',
+      heading: '세 단계로 도시를 정복하세요.',
       steps: [
         {
-          title: '생성',
+          title: '구역 생성',
           description:
-            '거리를 선택하고 무작위 루트를 생성하세요 — 매번 새로운 경로가 만들어집니다.',
+            '지도에 구역을 그리세요 — 정복하고 싶은 동네나 지역을 선택하면 됩니다.',
         },
         {
           title: '탐험',
           description:
-            '음성 내비게이션을 따라 한 번도 달려본 적 없는 거리를 탐험하세요.',
+            '구역 안의 거리를 달리면서 지도가 실시간으로 색칠되는 걸 확인하세요.',
         },
         {
-          title: '발견',
+          title: '정복',
           description:
-            '새로운 거리를 잠금 해제하고, 배지를 획득하며, 나만의 도시 탐험 지도를 만드세요.',
+            '거리의 80%를 색칠하면 깃발을 꽂을 수 있습니다 — 인접 구역을 합쳐 영토를 넓혀가세요.',
         },
       ],
       cta: 'Get Early Access',
@@ -204,7 +204,7 @@ export const translations = {
       label: 'The Concept',
       heading: '달릴 때마다 새로운 것이 보입니다.',
       subtitle:
-        'Roamer는 독특한 루트를 생성하고, 한 번도 탐험하지 않은 거리를 추적합니다.',
+        '구역을 정하고, 그 안의 거리를 달리세요 — 지나간 모든 길이 지도에 영구적으로 색칠됩니다.',
       otherLabel: '다른 앱들의 질문',
       otherQuestion: '얼마나 빨리 달렸나요?',
       roamerLabel: 'Roamer의 질문',
@@ -222,7 +222,7 @@ export const translations = {
     screenshots: {
       label: 'The App',
       heading: '거리를 위해 만들어졌습니다.',
-      screens: ['루트 생성', '내비게이션', '거리 발견', '트레일'],
+      screens: ['구역 설정', '거리 색칠', '구역 정복', '구역 합치기'],
     },
     whatsComing: {
       label: "What's Coming",
