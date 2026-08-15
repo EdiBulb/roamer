@@ -5,10 +5,10 @@ import { useRef } from "react";
 import { useLocale } from "@/context/LocaleContext";
 
 const videos = [
-  "/videos/create-area.mp4",
-  "/videos/color-streets.mp4",
-  "/videos/conquer-area.mp4",
-  "/videos/merge-area.mp4",
+  "/videos/demo_Create Your Area.mp4",
+  "/videos/demo_Color Your Streets.mp4",
+  "/videos/demo_Conquer Your Area.mp4",
+  "/videos/demo_Merge Your Area.mp4",
 ];
 
 export function Screenshots() {
