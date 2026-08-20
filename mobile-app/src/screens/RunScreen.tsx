@@ -1,4 +1,4 @@
-import { Alert, AppState, Animated, KeyboardAvoidingView, Linking, Modal, Platform, PanResponder, ActivityIndicator, Pressable, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, AppState, Animated, Image, KeyboardAvoidingView, Linking, Modal, Platform, PanResponder, ActivityIndicator, Pressable, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
@@ -436,16 +436,6 @@ export function RunScreen() {
           </TouchableOpacity>
         )}
 
-        {/* Privacy button — opens modal with toggles for screenshot sharing */}
-        {!isRunning && displayLocation && (
-          <TouchableOpacity
-            style={[styles.privacyBtn, { top: insets.top + 8 }]}
-            onPress={() => setShowPrivacyModal(true)}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.privacyBtnIcon}>🔒</Text>
-          </TouchableOpacity>
-        )}
 
         {/* Privacy modal */}
         <Modal visible={showPrivacyModal} transparent animationType="fade" onRequestClose={() => setShowPrivacyModal(false)}>
@@ -550,7 +540,26 @@ export function RunScreen() {
           {...cardPanResponder.panHandlers}
         >
           <View style={styles.cardHandle} />
-          <Text style={styles.appTitle}>Roamer</Text>
+          <View style={styles.cardHeader}>
+            <View style={styles.cardHeaderSpacer} />
+            <Text style={styles.appTitle}>Roamer</Text>
+            {displayLocation ? (
+              <TouchableOpacity
+                style={[styles.privacyBtn, (privacyHideLocation || privacyHideLabels || privacyShowAreaBadges) && styles.privacyBtnActive]}
+                onPress={() => setShowPrivacyModal(true)}
+                activeOpacity={0.85}
+              >
+                <Image
+                  source={(privacyHideLocation || privacyHideLabels || privacyShowAreaBadges)
+                    ? require('../../assets/icons/privacy-mode-white.png')
+                    : require('../../assets/icons/privacy-mode-dark.png')}
+                  style={styles.privacyBtnIcon}
+                />
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.cardHeaderSpacer} />
+            )}
+          </View>
           <TouchableOpacity
             style={styles.startRunButton}
             onPress={() => { handleStartRun(); if (isActive) advance(3); }}
@@ -590,21 +599,17 @@ const styles = StyleSheet.create({
   areaBtnText: { fontSize: 14, fontWeight: '700', color: '#1A1A1A' },
   areaBtnSub: { fontSize: 11, color: '#4CAF50', fontWeight: '600', marginTop: 2 },
   privacyBtn: {
-    position: 'absolute',
-    left: 16,
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    width: 44,
-    height: 44,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
+    width: 40,
+    height: 40,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 4,
-    elevation: 4,
   },
-  privacyBtnIcon: { fontSize: 22 },
+  privacyBtnActive: {
+    backgroundColor: '#7C3AED',
+  },
+  privacyBtnIcon: { width: 24, height: 24 },
   privacyOverlay: { flex: 1 },
   privacyCard: {
     position: 'absolute',
@@ -652,7 +657,13 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     marginBottom: 4,
   },
-  appTitle: { fontSize: 22, fontWeight: 'bold', color: '#1A1A1A' },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  cardHeaderSpacer: { width: 40 },
+  appTitle: { flex: 1, fontSize: 22, fontWeight: 'bold', color: '#1A1A1A', textAlign: 'center' },
   startRunButton: {
     backgroundColor: '#4CAF50',
     paddingVertical: 16,
