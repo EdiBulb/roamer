@@ -1,4 +1,4 @@
-import { Alert, AppState, Animated, KeyboardAvoidingView, Linking, Modal, Platform, PanResponder, ActivityIndicator, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, AppState, Animated, KeyboardAvoidingView, Linking, Modal, Platform, PanResponder, ActivityIndicator, Pressable, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
@@ -449,25 +449,30 @@ export function RunScreen() {
 
         {/* Privacy modal */}
         <Modal visible={showPrivacyModal} transparent animationType="fade" onRequestClose={() => setShowPrivacyModal(false)}>
-          <TouchableOpacity style={styles.privacyOverlay} activeOpacity={1} onPress={() => setShowPrivacyModal(false)}>
-            <TouchableOpacity activeOpacity={1} style={[styles.privacyCard, { top: insets.top + 60, left: 16 }]}>
+          <Pressable style={{ flex: 1 }} onPress={() => setShowPrivacyModal(false)}>
+            <Pressable style={[styles.privacyCard, { top: insets.top + 60, left: 16 }]} onPress={() => {}}>
               <Text style={styles.privacyTitle}>Privacy Mode</Text>
-              <TouchableOpacity style={styles.privacyRow} onPress={() => setPrivacyHideLocation(v => !v)} activeOpacity={0.7}>
+
+              <View style={styles.privacyRow}>
                 <Text style={styles.privacyLabel}>📍  Hide my location</Text>
                 <Switch value={privacyHideLocation} onValueChange={setPrivacyHideLocation} trackColor={{ true: '#4CAF50' }} />
-              </TouchableOpacity>
+              </View>
+
               <View style={styles.privacyDivider} />
-              <TouchableOpacity style={styles.privacyRow} onPress={() => setPrivacyHideLabels(v => !v)} activeOpacity={0.7}>
+
+              <View style={styles.privacyRow}>
                 <Text style={styles.privacyLabel}>🗺  Hide map labels</Text>
                 <Switch value={privacyHideLabels} onValueChange={setPrivacyHideLabels} trackColor={{ true: '#4CAF50' }} />
-              </TouchableOpacity>
+              </View>
+
               <View style={styles.privacyDivider} />
-              <TouchableOpacity style={styles.privacyRow} onPress={() => setPrivacyShowAreaBadges(v => !v)} activeOpacity={0.7}>
+
+              <View style={styles.privacyRow}>
                 <Text style={styles.privacyLabel}>🚩  Show area names</Text>
                 <Switch value={privacyShowAreaBadges} onValueChange={setPrivacyShowAreaBadges} trackColor={{ true: '#4CAF50' }} />
-              </TouchableOpacity>
-            </TouchableOpacity>
-          </TouchableOpacity>
+              </View>
+            </Pressable>
+          </Pressable>
         </Modal>
 
         <MyAreasSheet
