@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Magnetometer } from 'expo-sensors';
+import { File, Paths } from 'expo-file-system';
 import { MAPBOX_TOKEN, DEFAULT_ZOOM, COLOR_NEW, COLOR_OVERLAP, COLOR_OUTSIDE, COLOR_EXPLORED } from '../constants';
 import { getBoundingBox } from '../services/mapboxApi';
 import { Area, Coordinate, RunRoute } from '../types';
@@ -103,6 +104,7 @@ interface Props {
   routeClassification?: { overlapLines: Coordinate[][]; newLines: Coordinate[][]; outsideLines: Coordinate[][] };
   legendBottom?: number;
   hideLocation?: boolean;
+  hideMapLabels?: boolean;
 }
 
 export function MapDisplay({
@@ -125,6 +127,7 @@ export function MapDisplay({
   routeClassification,
   legendBottom = 16,
   hideLocation = false,
+  hideMapLabels = false,
 }: Props) {
   const insets = useSafeAreaInsets();
   const center: [number, number] = [location.longitude, location.latitude];
@@ -138,6 +141,34 @@ export function MapDisplay({
   const [flagPositions, setFlagPositions] = useState<{ id: string; x: number; y: number }[]>([]);
   const pulseAnim = useRef(new Animated.Value(0)).current;
   const hasSetInitialZoomRef = useRef(false);
+
+  // ── no-label style: fetched once, cached as local file ───────────────────
+  const [noLabelStyleURL, setNoLabelStyleURL] = useState<string | null>(null);
+  const noLabelLoadingRef = useRef(false);
+
+  useEffect(() => {
+    if (!hideMapLabels || noLabelStyleURL || noLabelLoadingRef.current) return;
+    noLabelLoadingRef.current = true;
+
+    const build = async () => {
+      const dest = new File(Paths.cache, 'mapbox_no_labels_v1.json');
+      if (dest.exists) {
+        setNoLabelStyleURL(dest.uri);
+        return;
+      }
+      const resp = await fetch(
+        `https://api.mapbox.com/styles/v1/mapbox/streets-v12?access_token=${MAPBOX_TOKEN}`,
+      );
+      const style = await resp.json();
+      // Remove every layer that renders text (type === 'symbol') — this hides
+      // all place names, street labels, and POI labels from the base map.
+      const stripped = { ...style, layers: style.layers.filter((l: any) => l.type !== 'symbol') };
+      dest.write(JSON.stringify(stripped));
+      setNoLabelStyleURL(dest.uri);
+    };
+
+    build().catch(() => { noLabelLoadingRef.current = false; });
+  }, [hideMapLabels]);
 
   async function recalcArrowPos() {
     if (!mapRef.current) return;
@@ -384,7 +415,7 @@ export function MapDisplay({
       <MapboxGL.MapView
         ref={mapRef}
         style={styles.map}
-        styleURL={MapboxGL.StyleURL.Street}
+        styleURL={hideMapLabels && noLabelStyleURL ? noLabelStyleURL : MapboxGL.StyleURL.Street}
         scaleBarPosition={{ top: insets.top + 8, left: 8 }}
         onPress={handlePress}
         onDidFinishLoadingMap={() => recalcArrowPos()}

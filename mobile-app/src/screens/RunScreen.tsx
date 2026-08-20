@@ -86,6 +86,7 @@ export function RunScreen() {
 
   // ── Privacy state ──
   const [privacyHideLocation, setPrivacyHideLocation] = useState(false);
+  const [privacyHideLabels, setPrivacyHideLabels] = useState(false);
 
   // ── Run state ──
   const [isRunning, setIsRunning] = useState(false);
@@ -412,6 +413,7 @@ export function RunScreen() {
             routeClassification={undefined}
             legendBottom={CARD_COLLAPSED_VISIBLE + 16}
             hideLocation={privacyHideLocation}
+            hideMapLabels={privacyHideLabels}
           />
         )}
 
@@ -431,15 +433,24 @@ export function RunScreen() {
           </TouchableOpacity>
         )}
 
-        {/* Privacy toggle — hide location icon for screenshot sharing */}
+        {/* Privacy toggles — hide location / map labels for screenshot sharing */}
         {!isRunning && displayLocation && (
-          <TouchableOpacity
-            style={[styles.privacyBtn, { top: insets.top + 8 }]}
-            onPress={() => setPrivacyHideLocation((v) => !v)}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.privacyBtnIcon}>{privacyHideLocation ? '🙈' : '👁'}</Text>
-          </TouchableOpacity>
+          <>
+            <TouchableOpacity
+              style={[styles.privacyBtn, { top: insets.top + 8 }]}
+              onPress={() => setPrivacyHideLocation((v) => !v)}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.privacyBtnIcon}>{privacyHideLocation ? '🙈' : '👁'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.privacyBtn, { top: insets.top + 60 }]}
+              onPress={() => setPrivacyHideLabels((v) => !v)}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.privacyBtnIcon}>{privacyHideLabels ? '🗾' : '🗺'}</Text>
+            </TouchableOpacity>
+          </>
         )}
 
         <MyAreasSheet
