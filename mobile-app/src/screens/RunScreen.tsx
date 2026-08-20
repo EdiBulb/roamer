@@ -84,6 +84,9 @@ export function RunScreen() {
 
   const { location, loading: locationLoading, error: locationError } = useLocation();
 
+  // ── Privacy state ──
+  const [privacyHideLocation, setPrivacyHideLocation] = useState(false);
+
   // ── Run state ──
   const [isRunning, setIsRunning] = useState(false);
   const [isFinished, setIsFinished] = useState(false);
@@ -408,6 +411,7 @@ export function RunScreen() {
             liveColoredIds={liveColoredIds}
             routeClassification={undefined}
             legendBottom={CARD_COLLAPSED_VISIBLE + 16}
+            hideLocation={privacyHideLocation}
           />
         )}
 
@@ -424,6 +428,17 @@ export function RunScreen() {
                 {activeArea.name} · {Math.round((activeArea.coloredSegmentIds.length / Math.max(activeArea.segments.length, 1)) * 100)}% explored
               </Text>
             )}
+          </TouchableOpacity>
+        )}
+
+        {/* Privacy toggle — hide location icon for screenshot sharing */}
+        {!isRunning && displayLocation && (
+          <TouchableOpacity
+            style={[styles.privacyBtn, { top: insets.top + 8 }]}
+            onPress={() => setPrivacyHideLocation((v) => !v)}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.privacyBtnIcon}>{privacyHideLocation ? '🙈' : '👁'}</Text>
           </TouchableOpacity>
         )}
 
@@ -541,6 +556,22 @@ const styles = StyleSheet.create({
   },
   areaBtnText: { fontSize: 14, fontWeight: '700', color: '#1A1A1A' },
   areaBtnSub: { fontSize: 11, color: '#4CAF50', fontWeight: '600', marginTop: 2 },
+  privacyBtn: {
+    position: 'absolute',
+    left: 16,
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  privacyBtnIcon: { fontSize: 22 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
   loadingText: { fontSize: 14, color: '#666' },
   errorText: { fontSize: 14, color: '#E53935', textAlign: 'center', paddingHorizontal: 24 },

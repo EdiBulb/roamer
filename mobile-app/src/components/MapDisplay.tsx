@@ -102,6 +102,7 @@ interface Props {
   liveColoredIds?: Set<string>;
   routeClassification?: { overlapLines: Coordinate[][]; newLines: Coordinate[][]; outsideLines: Coordinate[][] };
   legendBottom?: number;
+  hideLocation?: boolean;
 }
 
 export function MapDisplay({
@@ -123,6 +124,7 @@ export function MapDisplay({
   liveColoredIds,
   routeClassification,
   legendBottom = 16,
+  hideLocation = false,
 }: Props) {
   const insets = useSafeAreaInsets();
   const center: [number, number] = [location.longitude, location.latitude];
@@ -693,7 +695,7 @@ export function MapDisplay({
       )}
 
       {/* ── ExplorerPainterMarker at GPS screen position ── */}
-      {arrowPos && (
+      {arrowPos && !hideLocation && (
         <View
           pointerEvents="none"
           style={{
