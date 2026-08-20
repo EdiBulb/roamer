@@ -1,4 +1,4 @@
-import { Alert, AppState, Animated, KeyboardAvoidingView, Linking, Platform, PanResponder, ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, AppState, Animated, KeyboardAvoidingView, Linking, Modal, Platform, PanResponder, ActivityIndicator, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
@@ -85,8 +85,10 @@ export function RunScreen() {
   const { location, loading: locationLoading, error: locationError } = useLocation();
 
   // ── Privacy state ──
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const [privacyHideLocation, setPrivacyHideLocation] = useState(false);
   const [privacyHideLabels, setPrivacyHideLabels] = useState(false);
+  const [privacyShowAreaBadges, setPrivacyShowAreaBadges] = useState(false);
 
   // ── Run state ──
   const [isRunning, setIsRunning] = useState(false);
@@ -414,6 +416,7 @@ export function RunScreen() {
             legendBottom={CARD_COLLAPSED_VISIBLE + 16}
             hideLocation={privacyHideLocation}
             hideMapLabels={privacyHideLabels}
+            showAreaNameBadges={privacyShowAreaBadges}
           />
         )}
 
@@ -433,25 +436,39 @@ export function RunScreen() {
           </TouchableOpacity>
         )}
 
-        {/* Privacy toggles — hide location / map labels for screenshot sharing */}
+        {/* Privacy button — opens modal with toggles for screenshot sharing */}
         {!isRunning && displayLocation && (
-          <>
-            <TouchableOpacity
-              style={[styles.privacyBtn, { top: insets.top + 8 }]}
-              onPress={() => setPrivacyHideLocation((v) => !v)}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.privacyBtnIcon}>{privacyHideLocation ? '🙈' : '👁'}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.privacyBtn, { top: insets.top + 60 }]}
-              onPress={() => setPrivacyHideLabels((v) => !v)}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.privacyBtnIcon}>{privacyHideLabels ? '🗾' : '🗺'}</Text>
-            </TouchableOpacity>
-          </>
+          <TouchableOpacity
+            style={[styles.privacyBtn, { top: insets.top + 8 }]}
+            onPress={() => setShowPrivacyModal(true)}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.privacyBtnIcon}>🔒</Text>
+          </TouchableOpacity>
         )}
+
+        {/* Privacy modal */}
+        <Modal visible={showPrivacyModal} transparent animationType="fade" onRequestClose={() => setShowPrivacyModal(false)}>
+          <TouchableOpacity style={styles.privacyOverlay} activeOpacity={1} onPress={() => setShowPrivacyModal(false)}>
+            <TouchableOpacity activeOpacity={1} style={[styles.privacyCard, { top: insets.top + 60, left: 16 }]}>
+              <Text style={styles.privacyTitle}>Privacy Mode</Text>
+              <View style={styles.privacyRow}>
+                <Text style={styles.privacyLabel}>📍  Hide my location</Text>
+                <Switch value={privacyHideLocation} onValueChange={setPrivacyHideLocation} trackColor={{ true: '#4CAF50' }} />
+              </View>
+              <View style={styles.privacyDivider} />
+              <View style={styles.privacyRow}>
+                <Text style={styles.privacyLabel}>🗺  Hide map labels</Text>
+                <Switch value={privacyHideLabels} onValueChange={setPrivacyHideLabels} trackColor={{ true: '#4CAF50' }} />
+              </View>
+              <View style={styles.privacyDivider} />
+              <View style={styles.privacyRow}>
+                <Text style={styles.privacyLabel}>🚩  Show area names</Text>
+                <Switch value={privacyShowAreaBadges} onValueChange={setPrivacyShowAreaBadges} trackColor={{ true: '#4CAF50' }} />
+              </View>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </Modal>
 
         <MyAreasSheet
           visible={showMyAreas}
@@ -583,6 +600,23 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   privacyBtnIcon: { fontSize: 22 },
+  privacyOverlay: { flex: 1 },
+  privacyCard: {
+    position: 'absolute',
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    minWidth: 240,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  privacyTitle: { fontSize: 13, fontWeight: '700', color: '#888', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 12 },
+  privacyRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 4 },
+  privacyLabel: { fontSize: 14, fontWeight: '600', color: '#1A1A1A' },
+  privacyDivider: { height: 1, backgroundColor: '#F0F0F0', marginVertical: 6 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
   loadingText: { fontSize: 14, color: '#666' },
   errorText: { fontSize: 14, color: '#E53935', textAlign: 'center', paddingHorizontal: 24 },

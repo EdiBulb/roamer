@@ -105,6 +105,7 @@ interface Props {
   legendBottom?: number;
   hideLocation?: boolean;
   hideMapLabels?: boolean;
+  showAreaNameBadges?: boolean;
 }
 
 export function MapDisplay({
@@ -128,6 +129,7 @@ export function MapDisplay({
   legendBottom = 16,
   hideLocation = false,
   hideMapLabels = false,
+  showAreaNameBadges = false,
 }: Props) {
   const insets = useSafeAreaInsets();
   const center: [number, number] = [location.longitude, location.latitude];
@@ -645,15 +647,21 @@ export function MapDisplay({
       </MapboxGL.MapView>
 
       {/* ── conquered area flags (rendered as RN views above GL surface) ── */}
-      {flagPositions.map(fp => (
-        <View
-          key={`flag-overlay-${fp.id}`}
-          pointerEvents="none"
-          style={[styles.flagMarker, { position: 'absolute', left: fp.x - 22, top: fp.y - 44 }]}
-        >
-          <Text style={styles.flagMarkerText}>🚩</Text>
-        </View>
-      ))}
+      {flagPositions.map(fp => {
+        const area = areas.find(a => a.id === fp.id);
+        return (
+          <View key={`flag-overlay-${fp.id}`} pointerEvents="none">
+            <View style={[styles.flagMarker, { position: 'absolute', left: fp.x - 22, top: fp.y - 44 }]}>
+              <Text style={styles.flagMarkerText}>🚩</Text>
+            </View>
+            {showAreaNameBadges && area && (
+              <View style={[styles.areaBadge, { position: 'absolute', left: fp.x - 40, top: fp.y + 4 }]}>
+                <Text style={styles.areaBadgeText}>{area.name}</Text>
+              </View>
+            )}
+          </View>
+        );
+      })}
 
       {/* ── route classification legend (run summary only) ── */}
       {!isRunning && routeClassification && (
@@ -833,6 +841,14 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   flagMarkerText: { fontSize: 26 },
+  areaBadge: {
+    backgroundColor: 'rgba(26,26,26,0.82)',
+    borderRadius: 10,
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    alignSelf: 'flex-start',
+  },
+  areaBadgeText: { fontSize: 12, fontWeight: '700', color: '#fff' },
   routeLegend: {
     position: 'absolute',
     bottom: 16,
