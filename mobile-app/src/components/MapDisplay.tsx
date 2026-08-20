@@ -140,7 +140,7 @@ export function MapDisplay({
   const [compassHeading, setCompassHeading] = useState(0);
   const [mapHeading, setMapHeading] = useState(0);
   const [arrowPos, setArrowPos] = useState<{ x: number; y: number } | null>(null);
-  const [flagPositions, setFlagPositions] = useState<{ id: string; x: number; y: number }[]>([]);
+  const [flagPositions, setFlagPositions] = useState<{ id: string; x: number; y: number; conquered: boolean }[]>([]);
   const pulseAnim = useRef(new Animated.Value(0)).current;
   const hasSetInitialZoomRef = useRef(false);
 
@@ -178,13 +178,12 @@ export function MapDisplay({
       const pos = await (mapRef.current as any).getPointInView([location.longitude, location.latitude]);
       setArrowPos({ x: pos[0], y: pos[1] });
     } catch {}
-    const conquered = areas.filter(a => a.conquered);
-    if (conquered.length === 0) return;
+    if (areas.length === 0) return;
     try {
       const positions = await Promise.all(
-        conquered.map(async (a) => {
+        areas.map(async (a) => {
           const p = await (mapRef.current as any).getPointInView([a.center.longitude, a.center.latitude]);
-          return { id: a.id, x: p[0], y: p[1] };
+          return { id: a.id, x: p[0], y: p[1], conquered: a.conquered ?? false };
         })
       );
       setFlagPositions(positions);
@@ -646,17 +645,26 @@ export function MapDisplay({
 
       </MapboxGL.MapView>
 
-      {/* ── conquered area flags (rendered as RN views above GL surface) ── */}
+      {/* ── area overlays: flags (conquered) + name badges (all areas) ── */}
       {flagPositions.map(fp => {
         const area = areas.find(a => a.id === fp.id);
+        const showFlag = fp.conquered;
+        const showName = showAreaNameBadges && !!area;
+        if (!showFlag && !showName) return null;
         return (
-          <View key={`flag-overlay-${fp.id}`} pointerEvents="none">
-            <View style={[styles.flagMarker, { position: 'absolute', left: fp.x - 22, top: fp.y - 44 }]}>
-              <Text style={styles.flagMarkerText}>🚩</Text>
-            </View>
-            {showAreaNameBadges && area && (
-              <View style={[styles.areaBadge, { position: 'absolute', left: fp.x - 40, top: fp.y + 4 }]}>
-                <Text style={styles.areaBadgeText}>{area.name}</Text>
+          <View
+            key={`area-overlay-${fp.id}`}
+            pointerEvents="none"
+            style={{ position: 'absolute', left: fp.x - 22, top: fp.y - 44, flexDirection: 'row', alignItems: 'center', gap: 6 }}
+          >
+            {showFlag && (
+              <View style={styles.flagMarker}>
+                <Text style={styles.flagMarkerText}>🚩</Text>
+              </View>
+            )}
+            {showName && (
+              <View style={[styles.areaBadge, !showFlag && { marginLeft: 22 }]}>
+                <Text style={styles.areaBadgeText}>{area!.name}</Text>
               </View>
             )}
           </View>
