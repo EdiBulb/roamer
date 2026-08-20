@@ -452,20 +452,20 @@ export function RunScreen() {
           <TouchableOpacity style={styles.privacyOverlay} activeOpacity={1} onPress={() => setShowPrivacyModal(false)}>
             <TouchableOpacity activeOpacity={1} style={[styles.privacyCard, { top: insets.top + 60, left: 16 }]}>
               <Text style={styles.privacyTitle}>Privacy Mode</Text>
-              <View style={styles.privacyRow}>
+              <TouchableOpacity style={styles.privacyRow} onPress={() => setPrivacyHideLocation(v => !v)} activeOpacity={0.7}>
                 <Text style={styles.privacyLabel}>📍  Hide my location</Text>
                 <Switch value={privacyHideLocation} onValueChange={setPrivacyHideLocation} trackColor={{ true: '#4CAF50' }} />
-              </View>
+              </TouchableOpacity>
               <View style={styles.privacyDivider} />
-              <View style={styles.privacyRow}>
+              <TouchableOpacity style={styles.privacyRow} onPress={() => setPrivacyHideLabels(v => !v)} activeOpacity={0.7}>
                 <Text style={styles.privacyLabel}>🗺  Hide map labels</Text>
                 <Switch value={privacyHideLabels} onValueChange={setPrivacyHideLabels} trackColor={{ true: '#4CAF50' }} />
-              </View>
+              </TouchableOpacity>
               <View style={styles.privacyDivider} />
-              <View style={styles.privacyRow}>
+              <TouchableOpacity style={styles.privacyRow} onPress={() => setPrivacyShowAreaBadges(v => !v)} activeOpacity={0.7}>
                 <Text style={styles.privacyLabel}>🚩  Show area names</Text>
                 <Switch value={privacyShowAreaBadges} onValueChange={setPrivacyShowAreaBadges} trackColor={{ true: '#4CAF50' }} />
-              </View>
+              </TouchableOpacity>
             </TouchableOpacity>
           </TouchableOpacity>
         </Modal>
