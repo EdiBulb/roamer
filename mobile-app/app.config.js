@@ -23,6 +23,7 @@ module.exports = {
       },
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
+      allowBackup: true,
       permissions: [
         'android.permission.ACCESS_BACKGROUND_LOCATION',
         'android.permission.FOREGROUND_SERVICE',
